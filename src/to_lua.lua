@@ -117,6 +117,26 @@ function luafier.internalToLua(node, opts, buf)
 			buf:append(" = ")
 			toLua(node[2])
 		end
+		
+	elseif node.type == "destructarray" then
+		buf:append("local ")
+		toLua(node[1])
+		buf:append(" = ")
+
+		local memberCount = #node[1]
+		for i = 1, memberCount do
+			if i > 1 then buf:append(", ") end
+			toLua(node[2]); buf:append("["); buf:append(tostring(i)); buf:append("]")
+		end
+	elseif node.type == "destructtable" then
+		buf:append("local ")
+		toLua(node[1])
+		buf:append(" = ")
+
+		for i,member in ipairs(node[1]) do
+			if i > 1 then buf:append(", ") end
+			toLua(node[2]); buf:append("."); buf:append(member[1].text);
+		end
 
 	elseif node.type == "localfunc" then
 		buf:append("local function ")

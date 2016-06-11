@@ -95,7 +95,19 @@ x match
 end
 ```
 
-#### Table/array destructuring (implemented: ✘)
+#### Local table/array destructuring (implemented: ✔)
+
+```lua
+local person = { name = "Mike", age = 25 }
+local {name, age} = person
+print(name, " is ", age, " years old")
+
+local vecs = { "a", "b" }
+local [first, second] = vecs
+print(first, second)
+```
+
+#### For loop table/array destructuring (implemented: ✘)
 
 ```lua
 local people = { { name = "Mike", age = 25 }, { name = "John", age = 47 } }
@@ -108,6 +120,7 @@ for _, [first, second] in pairs(vecs) do
 	print(first, second)
 end
 ```
+
 
 #### Macros (implemented: ✘)
 
