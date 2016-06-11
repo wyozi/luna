@@ -1,4 +1,4 @@
-local code = [[gassign = "hey"
+gassign = "hey"
 
 local setupvar
 local setuptvar: string
@@ -30,36 +30,3 @@ local function fn(a: string, b: number?)
 	print(a, "must be a string and ", b, " must be a number or nil")
 end
 fn("hello")
-]]
-
-local l = require("src/lexer").new(code)
-local p = require("src/parser").new(l)
-
-local chunk = p:block()
-local luac = require("src/to_lua").toLua(chunk)
-
-print("===ast:")
-local function printt(t, i)
-	for k,v in pairs(t) do
-		if not ({line=true, col=true})[k] then
-			Msg((" "):rep(i or 0))
-			Msg(tostring(k))
-			Msg(" = ")
-
-			if type(v) == "table" then
-				MsgN()
-				printt(v, (i or 0) + 1)
-			else
-				MsgN(tostring(v))
-			end
-		end
-	end
-end
---printt(chunk)
-
-print("==luafied:")
-print(luac)
-
-print("==run:")
-local runner = loadstring or load
-runner(luac)

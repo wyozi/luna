@@ -3,14 +3,20 @@
 Transpiled language that compiles to Lua.
 
 - Compatible with Lua. Most files are valid Luna files straight away.
-- Multiple transpilation levels:
+- Multiple transpilation levels (implemented: ✘):
 	- `debug (default)` attempts to match Lua line numbers with original Luna source line numbers.
 	- `pretty` creates as readable Lua code as possible, leaves in comments etc..
 	- `optimize` attempts to save space by shortening identifiers, removing whitespace etc..
 
+### Usage
+
+`lua luna.lua [args]`
+
+Compiling the example file: `example.luna`, run `lua luna.lua c examples/example.luna`
+
 ### Differences from vanilla Lua
 
-#### Assignment operators
+#### Assignment operators (implemented: ✔)
 
 ```lua
 local x = 1
@@ -22,7 +28,7 @@ t.num *= 3.5
 assert(t.num == 7)
 ```
 
-#### Conditional assignment (`if local` / `while local`)
+#### Conditional assignment (`if local` (implemented: ✔) / `while local` (implemented: ✘))
 
 ```lua
 if local x = someMethod() then
@@ -37,7 +43,7 @@ while local node = getNextNode() do
 end
 ```
 
-#### Shorthand function syntax
+#### Shorthand function syntax (implemented: ✔)
 
 ```lua
 local fn1 = (name) => "Hello " .. name
@@ -49,7 +55,7 @@ print(fn("Mike"))
 fn2(25)
 ```
 
-#### Type signatures
+#### Type signatures (implemented: ✔)
 
 Note: can be used in eg. local variables, but at the moment do not do anything there.
 
@@ -63,7 +69,7 @@ fn("hello", "world") -- error: 'b' is invalid type
 fn("hello", 42) -- works
 ```
 
-#### Pattern matching
+#### Pattern matching (implemented: ✘)
 
 ```lua
 x match
@@ -74,7 +80,7 @@ x match
 end
 ```
 
-#### Table/array destructuring
+#### Table/array destructuring (implemented: ✘)
 
 ```lua
 local people = { { name = "Mike", age = 25 }, { name = "John", age = 47 } }
@@ -88,7 +94,7 @@ for _, [first, second] in pairs(vecs) do
 end
 ```
 
-#### Macros
+#### Macros (implemented: ✘)
 
 Note: cannot create your own macros at the moment.
 
@@ -97,7 +103,7 @@ local tbl = { "word", "mate" }
 local m = map!(tbl, (w) => w:upper())
 ```
 
-#### Method references
+#### Method references (implemented: ✘)
 
 ```lua
 function obj:Method()
