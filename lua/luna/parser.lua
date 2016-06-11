@@ -150,6 +150,68 @@ function Parser:stat()
 	local function localfnstmt(_, _, name, body)
 		return self:node("localfunc", name, body)
 	end
+
+	return
+		self:acceptChain(function() end, {"symbol", ";"}) or
+		self:acceptChain(assignment, "varlist", {"assignop"}, "explist") or
+		self:functioncall() or
+		self:stat_if() or
+		self:acceptChain(fnstmt, {"keyword", "function"}, "name", "funcbody") or
+		self:acceptChain(localfnstmt, {"keyword", "local"}, {"keyword", "function"}, "name", "funcbody") or
+		self:stat_local() or
+
+		-- these were in laststat(). Moved here for some time..
+		-- TODO move back to laststat
+		self:acceptChain(function(_,e) return self:node("return", e) end, {"keyword", "return"}, "explist") or
+		self:acceptChain(function() return self:node("break") end, {"keyword", "break"})
+end
+function Parser:stat_if()
+	local _else, _elseif
+
+	local function cont(b, node)
+		if b.endkw == "elseif" then
+			table.insert(node, _elseif())
+		elseif b.endkw == "else" then
+			table.insert(node, _else())
+		end
+	end
+
+	function _else()
+		local b = self:block()
+		if not b then self:error("expected else block") end
+		return self:node("else", b)
+	end
+	function _elseif()
+		local cond, b =
+			self:acceptChain(function(e,_,b) return e, b end, "exp", {"keyword", "then"}, "block")
+		if not b then self:error("expected elseif cond/block") end
+
+		local node = self:node("elseif", cond, b)
+		cont(b, node)
+		return node
+	end
+
+	local function normalif(_,cond,_,b)
+		local node = self:node("if", cond, b)
+		cont(b, node)
+		return node
+	end
+
+	local function assignif(_,assign,_,b)
+		if #assign[1] ~= 1 or #assign[2] ~= 1 then
+			self:error("If-Assign must have exactly one assigned variable")
+		end
+		
+		local node = self:node("ifassign", assign, b)
+		cont(b, node)
+		return node
+	end
+
+	return
+		self:acceptChain(normalif, {"keyword", "if"}, "exp", {"keyword", "then"}, "block") or
+		self:acceptChain(assignif, {"keyword", "if"}, "stat_local", {"keyword", "then"}, "block")
+end
+function Parser:stat_local()
 	local function localstmt(_, namelist)
 		local explist
 		if self:accept("assignop", "=") then
@@ -160,54 +222,7 @@ function Parser:stat()
 		return self:node("local", namelist, explist)
 	end
 
-	return
-		self:acceptChain(function() end, {"symbol", ";"}) or
-		self:acceptChain(assignment, "varlist", {"assignop"}, "explist") or
-		self:functioncall() or
-		self:stat_if() or
-		self:acceptChain(fnstmt, {"keyword", "function"}, "name", "funcbody") or
-		self:acceptChain(localfnstmt, {"keyword", "local"}, {"keyword", "function"}, "name", "funcbody") or
-		self:acceptChain(localstmt, {"keyword", "local"}, "typednamelist") or
-
-		-- these were in laststat(). Moved here for some time..
-		-- TODO move back to laststat
-		self:acceptChain(function(_,e) return self:node("return", e) end, {"keyword", "return"}, "explist") or
-		self:acceptChain(function() return self:node("break") end, {"keyword", "break"})
-end
-function Parser:stat_if()
-	local function _else()
-		local b = self:block()
-		if not b then self:error("expected else block") end
-		return self:node("else", b)
-	end
-	local function _elseif()
-		local cond, b =
-			self:acceptChain(function(e,_,b) return e, b end, "exp", {"keyword", "then"}, "block")
-		if not b then self:error("expected elseif cond/block") end
-
-		local node = self:node("elseif", cond, b)
-		if b.endkw == "elseif" then
-			table.insert(node, _elseif())
-		elseif b.endkw == "else" then
-			table.insert(node, _else())
-		end
-		return node
-	end
-
-	local function normalif(_,cond,_,b)
-		local node = self:node("if", cond, b)
-
-		if b.endkw == "elseif" then
-			table.insert(node, _elseif())
-		elseif b.endkw == "else" then
-			table.insert(node, _else())
-		end
-
-		return node
-	end
-
-	return
-		self:acceptChain(normalif, {"keyword", "if"}, "exp", {"keyword", "then"}, "block")
+	return self:acceptChain(localstmt, {"keyword", "local"}, "typednamelist")
 end
 
 function Parser:laststat()
