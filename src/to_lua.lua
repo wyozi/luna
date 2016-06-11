@@ -19,7 +19,8 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 	end
 
 	for i,tc in pairs(typechecks) do
-		local tcnode = { type = "funccall" }
+		-- copy line from parlist line; we want asserts to be on same line as func declaration
+		local tcnode = { type = "funccall", line = parlist.line }
 		tcnode[1] = { type = "identifier", text = "assert" }
 		local args = { type = "explist" }
 		tcnode[2] = args

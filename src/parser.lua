@@ -270,7 +270,7 @@ function Parser:type()
 	return
 		self:acceptChain(function(_, name)
 			local isOptional = self:accept("symbol", "?")
-			return { type = "type", name, not not isOptional }
+			return self:node("type", name, not not isOptional)
 		end, {"symbol", ":"}, {"identifier"})
 end
 
@@ -286,7 +286,7 @@ function Parser:var()
 		self:acceptChain(function(_,e) return e end, {"symbol", "."}, "name")
 
 	if f then
-		return { type = "index", n, f }
+		return self:node("index", n, f)
 	end
 
 	return n
@@ -326,7 +326,7 @@ end
 
 function Parser:exp()
 	-- check if it's a short function
-	local shortFn = self:acceptChain(function(_,p,_,_,b) return { type = "sfunc", p, b } end,
+	local shortFn = self:acceptChain(function(_,p,_,_,b) return self:node("sfunc", p, b) end,
 		{"symbol", "("}, "parlist", {"symbol", ")"}, {"symbol", "=>"}, "sfuncbody")
 	if shortFn then
 		return shortFn
@@ -373,24 +373,24 @@ end
 
 function Parser:functioncall()
 	return
-		self:acceptChain(function(p,a) return { type = "funccall", p, a } end, "prefixexp", "args") or
-		self:acceptChain(function(p,_,n,a) return { type = "methodcall", p, n, a } end, "prefixexp", {"symbol", ":"}, "name", "args")
+		self:acceptChain(function(p,a) return self:node("funccall", p, a) end, "prefixexp", "args") or
+		self:acceptChain(function(p,_,n,a) return self:node("methodcall", p, n, a) end, "prefixexp", {"symbol", ":"}, "name", "args")
 end
 
 
 function Parser:args()
 	return
-		self:acceptChain(function(_,el) return { type = "args", el } end, {"symbol", "("}, "explist", {"symbol", ")"})
+		self:acceptChain(function(_,el) return self:node("args", el) end, {"symbol", "("}, "explist", {"symbol", ")"})
 end
 
 function Parser:func()
 	return
-		self:acceptChain(function(_, f) return { type = "func", f } end, {"keyword", "function"}, "funcbody")
+		self:acceptChain(function(_, f) return self:node("func", f) end, {"keyword", "function"}, "funcbody")
 end
 
 function Parser:funcbody()
 	return
-		self:acceptChain(function(_, p, _, b) return { type = "funcbody", p, b } end, {"symbol", "("}, "parlist", {"symbol", ")"}, "block")
+		self:acceptChain(function(_, p, _, b) return self:node("funcbody", p, b) end, {"symbol", "("}, "parlist", {"symbol", ")"}, "block")
 end
 
 function Parser:parlist()
@@ -400,7 +400,7 @@ function Parser:parlist()
 		local a = self:typedname()
 		if a then return a end
 		a = self:accept("symbol", "...")
-		if a then return { type = "varargs" } end
+		if a then return self:node("varargs") end
 	end
 
 	local name = nextarg()
@@ -430,7 +430,7 @@ end
 
 function Parser:tableconstructor()
 	return
-		self:acceptChain(function(_,fl) return { type = "tableconstructor", fl } end, {"symbol", "{"}, "fieldlist", {"symbol", "}"})
+		self:acceptChain(function(_,fl) return self:node("tableconstructor", fl) end, {"symbol", "{"}, "fieldlist", {"symbol", "}"})
 end
 
 function Parser:fieldlist()
@@ -452,8 +452,8 @@ end
 function Parser:field()
 	return
 		-- TODO [] = exp
-		self:acceptChain(function(n,_,e) return { type = "field", n, e } end, "name", {"assignop", "="}, "exp") or
-		self:acceptChain(function(e) return { type = "field", nil, e } end, "exp")
+		self:acceptChain(function(n,_,e) return self:node("field", n, e) end, "name", {"assignop", "="}, "exp") or
+		self:acceptChain(function(e) return self:node("field", nil, e) end, "exp")
 end
 function Parser:fieldsep()
 	return self:accept("symbol", ",") or self:accept("symbol", ";")
@@ -464,7 +464,7 @@ end
 function Parser:sfuncbody()
 	return
 		self:acceptChain(function(_, b) return b end, {"keyword", "do"}, "block") or
-		self:acceptChain(function(e) return { type = "return", e} end, "exp")
+		self:acceptChain(function(e) return self:node("return", e) end, "exp")
 end
 
 return Parser
