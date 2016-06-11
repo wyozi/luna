@@ -102,6 +102,7 @@ function Lexer:next()
 
 		-- mod assign ops (must be before 1-char binops)
 		self:_readToken("assignop", "^[%+%-%*%/%^%%]%=") or
+		self:_readToken("assignop", "^%|%|%=") or
 
 		-- longer binop sequences
 		self:_readToken("binop", "^%<%=") or

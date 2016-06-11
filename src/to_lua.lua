@@ -153,8 +153,11 @@ function luafier.internalToLua(node, opts, buf)
 
 		if op == "=" then
 			toLua(node[2]); buf:append(" = "); toLua(node[3])
+		elseif op == "||=" then
+			assert(#node[3] == 1, "falsey assignment only works on 1-long explists currently")
+			toLua(node[2]); buf:append(" = "); toLua(node[2]); buf:append(" or ("); toLua(node[3]); buf:append(")")
 		else
-			assert(#node[3] == 1, "assignment mod only works on 1-long explists currently")
+			assert(#node[3] == 1, "mod assignment only works on 1-long explists currently")
 
 			-- what kind of modification to do
 			local modop = op:sub(1, 1)

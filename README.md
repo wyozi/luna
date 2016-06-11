@@ -69,6 +69,21 @@ fn("hello", "world") -- error: 'b' is invalid type
 fn("hello", 42) -- works
 ```
 
+#### Set-If-Falsey operator (implemented: ✔)
+
+```lua
+local x = nil
+
+x ||= "hello"
+-- x = "hello"
+
+x ||= "world"
+-- x = "hello"
+
+x ||= print("exec")
+-- nothing prints, expression is not evaluated if x is truthy
+```
+
 #### Pattern matching (implemented: ✘)
 
 ```lua
