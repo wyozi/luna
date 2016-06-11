@@ -98,7 +98,7 @@ function Lexer:next()
 		self:_readToken("binop", "^%.%.") or
 
 		-- 1-char symbols
-		self:_readToken("symbol", "^[%:%;%,%(%)%[%]%{%}%.]") or
+		self:_readToken("symbol", "^[%:%;%,%(%)%[%]%{%}%.%?]") or
 
 		-- mod assign ops (must be before 1-char binops)
 		self:_readToken("assignop", "^[%+%-%*%/%^%%]%=") or
@@ -115,6 +115,12 @@ function Lexer:next()
 
 		-- assign op (must be after binops)
 		self:_readToken("assignop", "^%=") or
+
+		-- unary ops
+		self:_readToken("unop", "^%-") or
+		self:_readToken("unop", "^not") or
+		self:_readToken("unop", "^%#") or
+		self:_readToken("unop", "^%~") or
 
 		self:_readToken("number", "^[%d%.]+") or
 

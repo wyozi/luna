@@ -261,10 +261,16 @@ end
 function Parser:typedname()
 	local i = self:name()
 	if i then
-		local typePostfix =
-			self:acceptChain(function(_, name) return { type = "type", name } end, {"symbol", ":"}, {"identifier"})
-		return self:node("typedname", i, typePostfix)
+		return self:node("typedname", i, self:type())
 	end
+end
+
+function Parser:type()
+	return
+		self:acceptChain(function(_, name)
+			local isOptional = self:accept("symbol", "?")
+			return { type = "type", name, not not isOptional }
+		end, {"symbol", ":"}, {"identifier"})
 end
 
 function Parser:var()
@@ -325,6 +331,12 @@ function Parser:exp()
 		return shortFn
 	end
 
+	local unop = self:accept("unop")
+
+	if unop then
+		return self:node("unop", unop.text, self:exp())
+	end
+
 	local e =
 		self:accept("identifier", "nil") or
 		self:accept("identifier", "false") or
@@ -345,7 +357,7 @@ function Parser:exp()
 			if not e2 then
 				self:error("expected right side of binop")
 			end
-			return { type = "binop", b.text, e, e2 }
+			return self:node("binop", b.text, e, e2)
 		end
 	end
 	

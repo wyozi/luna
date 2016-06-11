@@ -27,10 +27,10 @@ else
 end
 print("key is no more :( ", key)
 
-local function fn(a: string, b: number)
-	print(a, "must be a string and ", b, " must be a number")
+local function fn(a: string, b: number?)
+	print(a, "must be a string and ", b, " must be a number or nil")
 end
-fn(nil, 3)
+fn("hello")
 ]]
 
 local l = include("luna/lexer.lua").new(gode)

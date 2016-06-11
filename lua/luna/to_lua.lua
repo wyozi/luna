@@ -15,7 +15,7 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 		local name = par[1]
 		local type = par[2]
 		if type then
-			table.insert(typechecks, {name.text, type[1].text})
+			table.insert(typechecks, {var = name.text, type = type[1].text, nillable = type[2]})
 		end
 	end
 
@@ -25,8 +25,19 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 		local args = { type = "explist" }
 		tcnode[2] = args
 
-		args[1] = { type = "binop", "==", { type = "funccall", { type = "identifier", text = "type" }, { type = "identifier", text = tc[1] } }, { type = "literal", text = "\"" .. tc[2] .. "\""}}
-		args[2] = { type = "literal", text = [["Parameter ']] .. tc[1] .. [[' must be a ]] .. tc[2] .. [["]]}
+		local typeChecker = {
+			type = "binop", "==",
+			{ type = "funccall", { type = "identifier", text = "type" }, { type = "identifier", text = tc.var } },
+			{ type = "literal", text = "\"" .. tc.type .. "\""}
+		}
+		if tc.nillable then
+			local nilChecker = { type = "unop", "not", { type = "identifier", text = tc.var } }
+			args[1] = { type = "binop", "or", nilChecker, typeChecker }
+		else
+			args[1] = typeChecker
+		end
+
+		args[2] = { type = "literal", text = [["Parameter ']] .. tc.var .. [[' must be a ]] .. tc.type .. [["]]}
 		
 		table.insert(funcbody, i, tcnode)
 	end
@@ -95,8 +106,6 @@ function luafier.toLua(node)
 	elseif node.type == "break" then
 		return "break " .. luafier.toLua(node[1])
 
-	elseif node.type == "binop" then
-		return luafier.toLua(node[2]) .. " " .. node[1] .. " " .. luafier.toLua(node[3])
 
 	elseif node.type == "index" then
 		return luafier.toLua(node[1]) .. "." .. luafier.toLua(node[2])
@@ -145,6 +154,10 @@ function luafier.toLua(node)
 	elseif node.type == "else" then
 		return "else " .. luafier.toLua(node[1])
 
+	elseif node.type == "binop" then
+		return luafier.toLua(node[2]) .. " " .. node[1] .. " " .. luafier.toLua(node[3])
+	elseif node.type == "unop" then
+		return node[1] .. " " .. luafier.toLua(node[2])
 	elseif node.type == "identifier" then
 		return string.format("%s", node.text)
 	elseif node.type == "literal" then
