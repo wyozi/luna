@@ -201,7 +201,7 @@ function Parser:stat_if()
 		if #assign[1] ~= 1 or #assign[2] ~= 1 then
 			self:error("If-Assign must have exactly one assigned variable")
 		end
-		
+
 		local node = self:node("ifassign", assign, b)
 		cont(b, node)
 		return node
@@ -262,7 +262,7 @@ function Parser:typedname()
 	local i = self:name()
 	if i then
 		local typePostfix =
-			self:acceptChain(function(_, name) return { type = "typename", name } end, {"symbol", ":"}, {"identifier"})
+			self:acceptChain(function(_, name) return { type = "type", name } end, {"symbol", ":"}, {"identifier"})
 		return self:node("typedname", i, typePostfix)
 	end
 end

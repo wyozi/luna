@@ -9,6 +9,31 @@ function luafier.listToLua(list)
 	return table.concat(buf, ", ")
 end
 
+function luafier.processParListFuncBlock(parlist, funcbody)
+	local typechecks = {}
+	for _,par in ipairs(parlist) do
+		local name = par[1]
+		local type = par[2]
+		if type then
+			table.insert(typechecks, {name.text, type[1].text})
+		end
+	end
+
+	for i,tc in pairs(typechecks) do
+		local tcnode = { type = "funccall" }
+		tcnode[1] = { type = "identifier", text = "assert" }
+		local args = { type = "explist" }
+		tcnode[2] = args
+
+		args[1] = { type = "binop", "==", { type = "funccall", { type = "identifier", text = "type" }, { type = "identifier", text = tc[1] } }, { type = "literal", text = "\"" .. tc[2] .. "\""}}
+		args[2] = { type = "literal", text = [["Parameter ']] .. tc[1] .. [[' must be a ]] .. tc[2] .. [["]]}
+		
+		table.insert(funcbody, i, tcnode)
+	end
+
+	return parlist, funcbody
+end
+
 function luafier.toLua(node)
 	if node.type == "block" then
 		local buf = {}
@@ -35,10 +60,12 @@ function luafier.toLua(node)
 		return "function" .. luafier.toLua(node[1])
 
 	elseif node.type == "sfunc" then
-		return "function(" .. luafier.listToLua(node[1]) .. ") " .. luafier.toLua(node[2]) .. " end"
+		local pl, fb = luafier.processParListFuncBlock(node[1], node[2])
+		return "function(" .. luafier.listToLua(pl) .. ") " .. luafier.toLua(fb) .. " end"
 
 	elseif node.type == "funcbody" then
-		return "(" .. luafier.toLua(node[1]) .. ") " .. luafier.toLua(node[2]) .. " end"
+		local pl, fb = luafier.processParListFuncBlock(node[1], node[2])
+		return "(" .. luafier.listToLua(pl) .. ") " .. luafier.toLua(fb) .. " end"
 
 	elseif node.type == "assignment" then
 		local op = node[1]

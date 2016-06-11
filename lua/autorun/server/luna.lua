@@ -26,6 +26,11 @@ else
 	print("key was not a thing")
 end
 print("key is no more :( ", key)
+
+local function fn(a: string, b: number)
+	print(a, "must be a string and ", b, " must be a number")
+end
+fn(nil, 3)
 ]]
 
 local l = include("luna/lexer.lua").new(gode)
@@ -52,7 +57,7 @@ local function printt(t, i)
 		end
 	end
 end
-printt(chunk)
+--printt(chunk)
 
 print("==luafied:")
 print(luac)
