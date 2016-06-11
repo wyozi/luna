@@ -47,9 +47,9 @@ end
 
 ```lua
 local fn1 = (name) => "Hello " .. name
-local fn2 = (age) => {
+local fn2 = (age) => do
 	print("You are " .. age .. " years old")
-}
+end
 
 print(fn("Mike"))
 fn2(25)

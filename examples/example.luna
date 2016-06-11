@@ -5,14 +5,14 @@ local setuptvar: string
 
 local name:string, age:number = "Mike", 32
 
-local function lualocalfunc(a, b, c) return x, y, z end
-local lualocalfunc_a = function(a, b, c) return x, y, z end
-function luaglobfunc(a, b, c) return x, y, z end
-luaglobfunc_a = function(a, b, c) return x, y, z end
-
 local shortfn1 = (name) => "Hello " .. name
 local shortfn2 = (a, b) => print("I will ", a, " your ", b)
 shortfn2("eat", "banana")
+
+local longfn1 = (num1: number, num2: number) => do
+	return math.sqrt(num1^2 + num2^2)
+end
+print(longfn1(3, 4))
 
 local t = { target = 8, num = 2 }
 t.num *= t.target / t.num
