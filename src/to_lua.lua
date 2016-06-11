@@ -102,6 +102,11 @@ function luafier.internalToLua(node, opts, buf)
 				if i > 1 then buf:nl() end
 			end
 
+			-- if something has already been done on this line add semicolon
+			if buf.hasIndented then
+				buf:append("; ")
+			end
+
 			toLua(snode)
 		end
 
@@ -186,8 +191,10 @@ function luafier.internalToLua(node, opts, buf)
 		end
 
 	elseif node.type == "if" then
-		buf:append("if "); toLua(node[1]); buf:append(" then"); buf:nlIndent()
-		toLua(node[2]); buf:nlUnindent()
+		buf:append("if "); toLua(node[1]); buf:append(" then");
+		buf:nlIndent()
+		toLua(node[2]);
+		buf:nlUnindent()
 		if node[3] then
 			toLua(node[3])
 		else
@@ -202,8 +209,8 @@ function luafier.internalToLua(node, opts, buf)
 		node[1][1][1][1].text = varName
 
 		-- Create a new if block that checks if varName is trueish
-		local varId = { type = "identifier", text = varName }
-		local checkerIf = { type = "if", varId, node[2] }
+		local varId = { line = node[1].line, type = "identifier", text = varName }
+		local checkerIf = { line = node[1].line, type = "if", varId, node[2], node[3] }
 
 		-- Create a new local binding to restore the old name within the if scope and set it as the first code within if
 		local restoreBinding = { type = "local", { type = "identifier", text = origAssignedVarName }, varId }
@@ -220,7 +227,7 @@ function luafier.internalToLua(node, opts, buf)
 		end
 	elseif node.type == "else" then
 		buf:append("else"); buf:nlIndent()
-		toLua(node[2]); buf:nlUnindent()
+		toLua(node[1]); buf:nlUnindent()
 		buf:append("end")
 
 	elseif node.type == "binop" then
