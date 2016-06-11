@@ -57,13 +57,13 @@ function Lexer:_readToken(type, pattern)
 end
 
 local _keywords = {
-	"local", "return", "break", "function",
-	"end", "do", "if", "while", "for",
-	"else", "elseif", "then"
+	["local"] = true, ["return"] = true, ["break"] = true, ["function"] = true,
+	["end"] = true, ["do"] = true, ["if"] = true, ["while"] = true, ["for"] = true,
+	["else"] = true, ["elseif"] = true, ["then"] = true
 }
 function Lexer:_readIdentifierOrKeyword()
 	local id = self:_readToken("identifier", "^[_%a][_%w]*")
-	if id and table.HasValue(_keywords, id.text) then
+	if id and _keywords[id.text] then
 		id.type = "keyword"
 	end
 	return id

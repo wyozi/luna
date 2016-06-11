@@ -1,3 +1,5 @@
+local unpack = unpack or table.unpack -- Lua 5.3 support
+
 local Parser = {}
 Parser.__index = Parser
 

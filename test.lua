@@ -1,5 +1,4 @@
-
-local gode = [[gassign = "hey"
+local code = [[gassign = "hey"
 
 local setupvar
 local setuptvar: string
@@ -33,27 +32,26 @@ end
 fn("hello")
 ]]
 
-local l = include("luna/lexer.lua").new(gode)
-local p = include("luna/parser.lua").new(l)
+local l = require("src/lexer").new(code)
+local p = require("src/parser").new(l)
 
 local chunk = p:block()
-local luac = include("luna/to_lua.lua").toLua(chunk)
+local luac = require("src/to_lua").toLua(chunk)
 
 print("===ast:")
 local function printt(t, i)
 	for k,v in pairs(t) do
-		if ({line=true, col=true})[k] then
-			continue
-		end
-		Msg((" "):rep(i or 0))
-		Msg(tostring(k))
-		Msg(" = ")
+		if not ({line=true, col=true})[k] then
+			Msg((" "):rep(i or 0))
+			Msg(tostring(k))
+			Msg(" = ")
 
-		if type(v) == "table" then
-			MsgN()
-			printt(v, (i or 0) + 1)
-		else
-			MsgN(tostring(v))
+			if type(v) == "table" then
+				MsgN()
+				printt(v, (i or 0) + 1)
+			else
+				MsgN(tostring(v))
+			end
 		end
 	end
 end
@@ -63,4 +61,5 @@ print("==luafied:")
 print(luac)
 
 print("==run:")
-RunString(luac)
+local runner = loadstring or load
+runner(luac)
