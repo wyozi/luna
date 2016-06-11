@@ -209,8 +209,7 @@ function luafier.internalToLua(node, opts, buf)
 		local restoreBinding = { type = "local", { type = "identifier", text = origAssignedVarName }, varId }
 		table.insert(checkerIf[2], 1, restoreBinding)
 
-		toLua(node[1]); buf:nl()
-		toLua(checkerIf)
+		toLua(node[1]); buf:append("; ") toLua(checkerIf)
 	elseif node.type == "elseif" then
 		buf:append("elseif "); toLua(node[1]); buf:append(" then"); buf:nlIndent()
 		toLua(node[2]); buf:nlUnindent()

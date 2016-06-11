@@ -1,4 +1,5 @@
 local unpack = unpack or table.unpack -- Lua 5.3 support
+local gettype = type
 
 local Parser = {}
 Parser.__index = Parser
@@ -57,9 +58,19 @@ end
 
 function Parser:node(type, ...)
 	local n = { type = type, line = (self.curToken) and (self.curToken.line), col = (self.curToken) and (self.curToken.col)}
-	for i,v in pairs{...} do
+
+	local args = {...}
+
+	-- if first argument is a AST node, copy the line number from it as automatically guessed numbers are in some cases
+	-- too far ahead. TODO this is kind of undocumented behavior
+	if gettype(args[1]) == "table" and args[1].type then
+		n.line = args[1].line
+	end
+
+	for i,v in pairs(args) do
 		table.insert(n, v)
 	end
+
 	return n
 end
 function Parser:accept(type, text)
