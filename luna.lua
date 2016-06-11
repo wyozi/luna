@@ -67,7 +67,13 @@ elseif args[1] == "run" then
 
 	local luac = require("src/to_lua").toLua(block)
 	local runner = loadstring or load
-	runner(luac)
+	
+	local f, e = runner(luac)
+	if f then
+		f()
+	else
+		print("compilation failed: ", e)
+	end
 else
 	print("No command given. Try 'compile', 'ast' or 'run'.")
 end
