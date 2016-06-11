@@ -68,7 +68,7 @@ function Parser:node(type, ...)
 	end
 
 	for i,v in pairs(args) do
-		table.insert(n, v)
+		n[i] = v
 	end
 
 	return n
@@ -168,6 +168,7 @@ function Parser:stat()
 		self:acceptChain(assignment, "varlist", {"assignop"}, "explist") or
 		self:functioncall() or
 		self:stat_if() or
+		self:stat_for() or
 		self:acceptChain(fnstmt, {"keyword", "function"}, "name", "funcbody") or
 		self:acceptChain(localfnstmt, {"keyword", "local"}, {"keyword", "function"}, "name", "funcbody") or
 		self:stat_local() or
@@ -222,6 +223,22 @@ function Parser:stat_if()
 	return
 		self:acceptChain(normalif, {"keyword", "if"}, "exp", {"keyword", "then"}, "block") or
 		self:acceptChain(assignif, {"keyword", "if"}, "stat_local", {"keyword", "then"}, "block")
+end
+function Parser:stat_for()
+	local function fornum(_,var,_,low,_,high,_,b)
+		return self:node("fornum", var, low, high, nil, b)
+	end
+	local function fornum_step(_,var,_,low,_,high,_,step,_,b)
+		return self:node("fornum", var, low, high, step, b)
+	end
+	local function forgen(_,names,_,iter,_,b)
+		return self:node("forgen", names, iter, b)
+	end
+
+	return
+		self:acceptChain(fornum_step, {"keyword", "for"}, "name", {"assignop", "="}, "exp", {"symbol", ","}, "exp", {"symbol", ","}, "exp", {"keyword", "do"}, "block") or
+		self:acceptChain(fornum, {"keyword", "for"}, "name", {"assignop", "="}, "exp", {"symbol", ","}, "exp", {"keyword", "do"}, "block") or
+		self:acceptChain(forgen, {"keyword", "for"}, "typednamelist", {"keyword", "in"}, "exp", {"keyword", "do"}, "block")
 end
 function Parser:stat_local()
 	local function localstmt(_, namelist)

@@ -59,7 +59,7 @@ end
 local _keywords = {
 	["local"] = true, ["return"] = true, ["break"] = true, ["function"] = true,
 	["end"] = true, ["do"] = true, ["if"] = true, ["while"] = true, ["for"] = true,
-	["else"] = true, ["elseif"] = true, ["then"] = true
+	["else"] = true, ["elseif"] = true, ["then"] = true, ["in"] = true
 }
 function Lexer:_readIdentifierOrKeyword()
 	local id = self:_readToken("identifier", "^[_%a][_%w]*")

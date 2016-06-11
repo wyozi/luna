@@ -233,6 +233,21 @@ function luafier.internalToLua(node, opts, buf)
 		toLua(node[1]); buf:nlUnindent()
 		buf:append("end")
 
+	elseif node.type == "fornum" then
+		local var, low, high, step, b = node[1], node[2], node[3], node[4], node[5]
+		buf:append("for "); toLua(var); buf:append(" = "); toLua(low); buf:append(", "); toLua(high)
+		if step then buf:append(", "); toLua(step) end
+		buf:append(" do"); buf:nlIndent()
+		toLua(b)
+		buf:nlUnindent()
+		buf:append("end")
+	elseif node.type == "forgen" then
+		local names, iter, b = node[1], node[2], node[3]
+		buf:append("for "); toLua(names); buf:append(" in "); toLua(iter); buf:append(" do"); buf:nlIndent()
+		toLua(b)
+		buf:nlUnindent()
+		buf:append("end")
+
 	elseif node.type == "binop" then
 		toLua(node[2]); buf:append(" "); buf:append(node[1]); buf:append(" "); toLua(node[3])
 		
