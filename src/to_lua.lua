@@ -1,12 +1,11 @@
 
 local luafier = {}
 
-function luafier.listToLua(list)
-	local buf = {}
+function luafier.listToLua(list, opts, buf)
 	for i,snode in ipairs(list) do
-		table.insert(buf, luafier.toLua(snode, buf))
+		if i > 1 then buf:append(", ") end
+		luafier.internalToLua(snode, opts, buf)
 	end
-	return table.concat(buf, ", ")
 end
 
 function luafier.processParListFuncBlock(parlist, funcbody)
@@ -45,87 +44,152 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 	return parlist, funcbody
 end
 
-function luafier.toLua(node)
+local luaBuffer = {}
+luaBuffer.__index = luaBuffer
+
+function luaBuffer.new(indentString)
+	return setmetatable({buf = {}, indent = 0, indentString = indentString or "\t", line = 1}, luaBuffer)
+end
+function luaBuffer:appendln(t)
+	self:append(t)
+	self:nl()
+end
+function luaBuffer:append(t)
+	if not self.hasIndented then
+		self.buf[#self.buf + 1] = self.indentString:rep(self.indent)
+		self.hasIndented = true
+	end
+	self.buf[#self.buf + 1] = t
+end
+function luaBuffer:nl()
+	self.buf[#self.buf + 1] = "\n"
+	self.line = self.line + 1
+	self.hasIndented = false
+end
+function luaBuffer:nlIndent()
+	self:nl()
+	self.indent = self.indent + 1
+end
+function luaBuffer:nlUnindent()
+	self:nl()
+	self.indent = self.indent - 1
+end
+function luaBuffer:tostring()
+	return table.concat(self.buf, "")
+end
+
+function luafier.internalToLua(node, opts, buf)
+	local function toLua(lnode)
+		luafier.internalToLua(lnode, opts, buf)
+	end
+	local function listToLua(lnode)
+		luafier.listToLua(lnode, opts, buf)
+	end
+
 	if node.type == "block" then
-		local buf = {}
 		for i,snode in ipairs(node) do
-			table.insert(buf, luafier.toLua(snode, buf))
+			local targLine = snode.line
+			local curLine = buf.line
+
+			if targLine and targLine > curLine then
+				-- add some nls to reach targLine if needed
+				for _ = 1, (targLine - curLine) do
+					buf:nl()
+				end
+			end
+
+			toLua(snode)
+			buf:nl()
 		end
-		return table.concat(buf, "\n")
-		
+
 	elseif node.type == "local" then
-		local s = "local " .. luafier.toLua(node[1])
+		buf:append("local ")
+		toLua(node[1])
 		if node[2] then -- has explist
-			s = s .. " = " .. luafier.toLua(node[2])
+			buf:append(" = ")
+			toLua(node[2])
 		end
-		return s
 
 	elseif node.type == "localfunc" then
-		return
-			"local function " .. luafier.toLua(node[1]) .. luafier.toLua(node[2])
+		buf:append("local function ")
+		toLua(node[1])
+		toLua(node[2])
 
 	elseif node.type == "globalfunc" then
-		return "function " .. luafier.toLua(node[1]) .. luafier.toLua(node[2])
+		buf:append("function ")
+		toLua(node[1])
+		toLua(node[2])
 
 	elseif node.type == "func" then
-		return "function" .. luafier.toLua(node[1])
+		buf:append("function ")
+		toLua(node[1])
 
 	elseif node.type == "sfunc" then
 		local pl, fb = luafier.processParListFuncBlock(node[1], node[2])
-		return "function(" .. luafier.listToLua(pl) .. ") " .. luafier.toLua(fb) .. " end"
+		buf:append("function(")
+		listToLua(pl)
+		buf:append(") ")
+		toLua(fb)
+		buf:append(" end")
 
 	elseif node.type == "funcbody" then
 		local pl, fb = luafier.processParListFuncBlock(node[1], node[2])
-		return "(" .. luafier.listToLua(pl) .. ") " .. luafier.toLua(fb) .. " end"
+		buf:append("(")
+		listToLua(pl)
+		buf:append(") ")
+		toLua(fb)
+		buf:append(" end")
 
 	elseif node.type == "assignment" then
 		local op = node[1]
 
 		if op == "=" then
-			return luafier.toLua(node[2]) .. " = " .. luafier.toLua(node[3])
+			toLua(node[2]); buf:append(" = "); toLua(node[3])
 		else
 			assert(#node[3] == 1, "assignment mod only works on 1-long explists currently")
 
 			-- what kind of modification to do
 			local modop = op:sub(1, 1)
 			
-			return luafier.toLua(node[2]) .. " = " .. luafier.toLua(node[2]) .. " " .. modop .. " (" .. luafier.toLua(node[3]) .. ")"
+			toLua(node[2]); buf:append(" = "); toLua(node[2]); buf:append(" "); buf:append(modop); buf:append(" ("); toLua(node[3]); buf:append(")")
 		end
 	elseif node.type == "funccall" then
-		return luafier.toLua(node[1]) .. "(" .. luafier.toLua(node[2]) .. ")"
+		toLua(node[1]); buf:append("("); toLua(node[2]); buf:append(")")
 
 	elseif node.type == "args" or node.type == "fieldlist" or node.type == "parlist" or node.type == "typednamelist" or node.type == "varlist" or node.type == "explist" then
-		return luafier.listToLua(node)
+		listToLua(node)
 		
-
 	elseif node.type == "typedname" then
-		return luafier.toLua(node[1])
+		toLua(node[1])
 
 	elseif node.type == "return" then
-		return "return " .. luafier.toLua(node[1])
-	elseif node.type == "break" then
-		return "break " .. luafier.toLua(node[1])
+		buf:append("return "); toLua(node[1])
 
+	elseif node.type == "break" then
+		buf:append("break")
 
 	elseif node.type == "index" then
-		return luafier.toLua(node[1]) .. "." .. luafier.toLua(node[2])
+		toLua(node[1]); buf:append("."); toLua(node[2])
 
 	elseif node.type == "tableconstructor" then
-		return "{" .. luafier.toLua(node[1]) .. "}"
+		buf:append("{"); toLua(node[1]); buf:append("}")
+		
 	elseif node.type == "field" then
 		local key, val = node[1], node[2]
 		if key then
-			return luafier.toLua(key) .. " = " .. luafier.toLua(val)
+			toLua(key); buf:append(" = "); toLua(val)
 		else
-			return luafier.toLua(val)
+			toLua(val)
 		end
 
 	elseif node.type == "if" then
-		local s = "if " .. luafier.toLua(node[1]) .. " then " .. luafier.toLua(node[2])
+		buf:append("if "); toLua(node[1]); buf:append(" then"); buf:nlIndent()
+		toLua(node[2]); buf:nlUnindent()
 		if node[3] then
-			s = s .. " " .. luafier.toLua(node[3])
+			toLua(node[3])
+		else
+			buf:append("end")
 		end
-		return s .. " end"
 	elseif node.type == "ifassign" then
 		-- Create a temporary variable name for the variable to be assigned before the if
 		local origAssignedVarName = node[1][1][1][1].text -- ohgod
@@ -142,31 +206,45 @@ function luafier.toLua(node)
 		local restoreBinding = { type = "local", { type = "identifier", text = origAssignedVarName }, varId }
 		table.insert(checkerIf[2], 1, restoreBinding)
 
-		return
-			luafier.toLua(node[1]) .. "\n" ..
-			luafier.toLua(checkerIf)
+		toLua(node[1]); buf:nl()
+		toLua(checkerIf)
 	elseif node.type == "elseif" then
-		local s = "elseif " .. luafier.toLua(node[1]) .. " then " .. luafier.toLua(node[2])
+		buf:append("elseif "); toLua(node[1]); buf:append(" then"); buf:nlIndent()
+		toLua(node[2]); buf:nlUnindent()
 		if node[3] then
-			s = s .. " " .. luafier.toLua(node[3])
+			toLua(node[3])
+		else
+			buf:append("end")
 		end
-		return s
 	elseif node.type == "else" then
-		return "else " .. luafier.toLua(node[1])
+		buf:append("else"); buf:nlIndent()
+		toLua(node[2]); buf:nlUnindent()
+		buf:append("end")
 
 	elseif node.type == "binop" then
-		return luafier.toLua(node[2]) .. " " .. node[1] .. " " .. luafier.toLua(node[3])
+		toLua(node[2]); buf:append(" "); buf:append(node[1]); buf:append(" "); toLua(node[3])
+		
 	elseif node.type == "unop" then
-		return node[1] .. " " .. luafier.toLua(node[2])
+		buf:append(node[1]); buf:append(" "); toLua(node[2])
+
 	elseif node.type == "identifier" then
-		return string.format("%s", node.text)
+		buf:append(node.text)
+		
 	elseif node.type == "literal" then
-		return string.format("%s", node.text)
+		buf:append(node.text)
+
 	elseif node.type == "number" then
-		return string.format("%d", node.text)
+		buf:append(node.text)
+
 	else
 		error("unhandled ast node " .. node.type)
 	end
+end
+
+function luafier.toLua(node, opts)
+	local buf = luaBuffer.new()
+	luafier.internalToLua(node, opts, buf)
+	return buf:tostring()
 end
 
 return luafier

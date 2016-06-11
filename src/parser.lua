@@ -24,7 +24,6 @@ function Parser:next()
 	if not self.nextToken then
 		local nt = self.lexer:next()
 		if nt then
-			--print("nt: ", table.ToString(nt))
 			self.tokens[self.tokenIndex + 1] = nt
 			self.nextToken = nt
 		end
@@ -57,7 +56,7 @@ function Parser:expectedError(expected)
 end
 
 function Parser:node(type, ...)
-	local n = { type = type, line = (self.nextToken) and (self.nextToken.line), col = (self.nextToken) and (self.nextToken.col)}
+	local n = { type = type, line = (self.curToken) and (self.curToken.line), col = (self.curToken) and (self.curToken.col)}
 	for i,v in pairs{...} do
 		table.insert(n, v)
 	end
