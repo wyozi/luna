@@ -89,9 +89,6 @@ function luafier.internalToLua(node, opts, buf)
 
 	if node.type == "block" then
 		for i,snode in ipairs(node) do
-			-- add newlines before all except first node
-			if i > 1 then buf:nl() end
-
 			local targLine = snode.line
 			local curLine = buf.line
 
@@ -100,6 +97,9 @@ function luafier.internalToLua(node, opts, buf)
 				for _ = 1, (targLine - curLine) do
 					buf:nl()
 				end
+			elseif not targLine or targLine < curLine then
+				-- add newlines before all except first node if we're not ahead of ourselves
+				if i > 1 then buf:nl() end
 			end
 
 			toLua(snode)
