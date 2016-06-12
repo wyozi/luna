@@ -121,7 +121,6 @@ for _, [first, second] in pairs(vecs) do
 end
 ```
 
-
 #### Macros (implemented: ✘)
 
 Note: cannot create your own macros at the moment.

@@ -47,3 +47,5 @@ end
 
 local {num, target} = t
 print("num: ", num, " target: ", target)
+local arr = {3, 2}; local [f, s] = arr
+print(f, s)

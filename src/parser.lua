@@ -250,17 +250,26 @@ function Parser:stat_local()
 
 		return self:node("local", namelist, explist)
 	end
-	local function destruct_array(_, _, namelist, _, _, target)
-		return self:node("destructarray", namelist, target)
-	end
-	local function destruct_table(_, _, namelist, _, _, target)
-		return self:node("destructtable", namelist, target)
+	local function localdestr(_, destructor, _, target)
+		return self:node("localdestructor", destructor, target)
 	end
 
 	return
-		self:acceptChain(destruct_array, {"keyword", "local"}, {"symbol", "["}, "typednamelist", {"symbol", "]"}, {"assignop", "="}, "exp") or
-		self:acceptChain(destruct_table, {"keyword", "local"}, {"symbol", "{"}, "typednamelist", {"symbol", "}"}, {"assignop", "="}, "exp") or
+		self:acceptChain(localdestr, {"keyword", "local"}, "destructor", {"assignop", "="}, "exp") or
 		self:acceptChain(localstmt, {"keyword", "local"}, "typednamelist")
+end
+
+function Parser:destructor()
+	local function destruct_array(_, namelist)
+		return self:node("arraydestructor", namelist)
+	end
+	local function destruct_table(_, namelist)
+		return self:node("tabledestructor", namelist)
+	end
+
+	return
+		self:acceptChain(destruct_array, {"symbol", "["}, "typednamelist", {"symbol", "]"}) or
+		self:acceptChain(destruct_table, {"symbol", "{"}, "typednamelist", {"symbol", "}"})
 end
 
 function Parser:laststat()
