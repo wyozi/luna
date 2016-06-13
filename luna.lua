@@ -94,10 +94,10 @@ elseif args[1] == "t" or args[1] == "test" then
 	-- OS detection hack! from: http://stackoverflow.com/a/14425862
 	local isWindows = package.config:sub(1,1) == "\\"
 
-	local testls = io.popen(isWindows and "dir /b /a-d tests" or "ls tests")
+	local testls = io.popen(isWindows and "dir /b /a-d tests" or "ls -1 tests")
 	for name in testls:lines() do
-		if name ~= "" then
-			io.write("Running '" .. name .. "' .. ")
+		if name:match("%.luna$") then
+			io.write("Testing '" .. name .. "' .. ")
 			
   			local f = io.open("tests/" .. name, "rb")
 			local src = f:read("*a")
