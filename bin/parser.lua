@@ -1,4 +1,4 @@
-local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end; local unpack = unpack or table.unpack
+local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end;local unpack = unpack or table.unpack
 local gettype = type
 
 local Parser = {  }
@@ -45,7 +45,7 @@ end
 function Parser:error(text)
 	__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
 	local line, col
-	if self.nextToken then ; line, col = self.nextToken.line, self.nextToken.col else 
+	if self.nextToken then line, col = self.nextToken.line, self.nextToken.col else 
 
 	line, col = -1, -1 end
 
@@ -53,7 +53,7 @@ function Parser:error(text)
 	text = text .. " preceding tokens: "
 	for i = 2, 0, -1 do
 		local t = self.tokens[self.tokenIndex - 1 - i]
-		if t then ; text = text .. " [" .. t.type .. ":" .. t.text .. "]" end
+		if t then text = text .. " [" .. t.type .. ":" .. t.text .. "]" end
 	end
 
 	error("[Luna Parser] " .. text .. " at line " .. line .. " col " .. col)
@@ -88,12 +88,12 @@ function Parser:node(type, ...)
 	return n
 end
 function Parser:accept(type, text)
-	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string"); __L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string")
-	if self.nextToken and self.nextToken.type == type and (not text or self.nextToken.text == text) then ; return self:next() end
+	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")__L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string")
+	if self.nextToken and self.nextToken.type == type and (not text or self.nextToken.text == text) then return self:next() end
 end
 
 function Parser:expect(type, text)
-	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string"); __L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
 	local n = self:accept(type, text)
 	if not n then return self:error("expected " .. type) end
 	return n
@@ -153,12 +153,12 @@ local chain_meta = {  }
 chain_meta.__index = chain_meta
 
 function chain_meta:insertParserFn(expected, fn, name)
-	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean"); __L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function"); __L_as(name == nil or __L_t(name) == "string", "Parameter 'name' must be a string")
+	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean")__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")__L_as(name == nil or __L_t(name) == "string", "Parameter 'name' must be a string")
 	table.insert(self.chain, { name = name or "unknown", expected = expected, fn = fn })
 	return self
 end
 function chain_meta:insertToken(expected, type, text)
-	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean"); __L_as(__L_t(type) == "string", "Parameter 'type' must be a string"); __L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string"); table.insert(self.chain, { name = type, expected = expected, fn = function() return self.parser:accept(type, text) end })
+	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean")__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")__L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string")table.insert(self.chain, { name = type, expected = expected, fn = function() return self.parser:accept(type, text) end })
 	return self
 end
 function chain_meta:accept(a, b)
@@ -298,13 +298,13 @@ function Parser:stat_if()
 
 	function _else()
 		local b = self:block()
-		if not b then ; self:error("expected else block") end
+		if not b then self:error("expected else block") end
 		return self:node("else", b)
 	end
 	function _elseif()
 		local cond, b = self:acceptChain(function (e, _, b) 
 		return e, b end, "exp", { "keyword", "then" }, "block")
-		if not b then ; self:error("expected elseif condition or block") end
+		if not b then self:error("expected elseif condition or block") end
 
 		local node = self:node("elseif", cond, b)
 		cont(b, node)
@@ -359,7 +359,7 @@ function Parser:stat_local()
 		local explist
 		if self:accept("assignop", "=") then 
 		explist = self:explist()
-		if not explist then ; self:error("expected explist") end end
+		if not explist then self:error("expected explist") end end
 
 
 		return self:node("local", namelist, explist)
@@ -389,26 +389,26 @@ end
 function Parser:laststat()
 	return self:acceptChain(function (_, e, _, c) 
 	return self:node("returnif", e, c) end, { "keyword", "return" }, "explist", { "keyword", "if" }, "exp") or
-	self:acceptChain(function (_, e) ; return self:node("return", e) end, { "keyword", "return" }, "explist") or
-	self:acceptChain(function () ; return self:node("break") end, { "keyword", "break" })
+	self:acceptChain(function (_, e) return self:node("return", e) end, { "keyword", "return" }, "explist") or
+	self:acceptChain(function () return self:node("break") end, { "keyword", "break" })
 end
 
 function Parser:funcname()
 	local namebuf = self:node("funcname")
 
 	local name = self:name()
-	if not name then ; return  end
+	if not name then return  end
 	namebuf[1] = name
 
 	while self:accept("symbol", ".") do 
 	name = self:name()
-	if not name then ; self:error("funcname terminates abruptly") end
+	if not name then self:error("funcname terminates abruptly") end
 	table.insert(namebuf, name) end
 
 
 	if self:accept("symbol", ":") then 
 	name = self:name()
-	if not name then ; self:error("funcname terminates abruptly") end
+	if not name then self:error("funcname terminates abruptly") end
 	table.insert(namebuf, name)
 
 	namebuf.isMethod = true end
@@ -438,7 +438,7 @@ function Parser:name()
 end
 
 function Parser:typedname()
-	local __ifa0_i = self:name(); if __ifa0_i then ; local i = __ifa0_i
+	local __ifa0_i = self:name(); if __ifa0_i then local i = __ifa0_i
 	return self:node("typedname", i, self:type()) end
 end
 
@@ -494,10 +494,10 @@ function Parser:primaryexp()
 
 	while true do 
 
-	local nn = self:acceptChain(function (_, nm) ; return self:node("index", n, nm) end, { "symbol", "." }, "name") or
-	self:acceptChain(function (_, e) ; return self:node("indexb", n, e) end, { "symbol", "[" }, "exp", { "symbol", "]" }) or
-	self:acceptChain(function (_, nm, a) ; return self:node("methodcall", n, nm, a) end, { "symbol", ":" }, "name", "args") or
-	self:acceptChain(function (a) ; return self:node("funccall", n, a) end, "args")
+	local nn = self:acceptChain(function (_, nm) return self:node("index", n, nm) end, { "symbol", "." }, "name") or
+	self:acceptChain(function (_, e) return self:node("indexb", n, e) end, { "symbol", "[" }, "exp", { "symbol", "]" }) or
+	self:acceptChain(function (_, nm, a) return self:node("methodcall", n, nm, a) end, { "symbol", ":" }, "name", "args") or
+	self:acceptChain(function (a) return self:node("funccall", n, a) end, "args")
 
 	if not nn then 
 
@@ -594,7 +594,7 @@ function Parser:parlist()
 		return self:typedname() or self:varargs()
 	end
 
-	local __ifa1_name = nextarg(); if __ifa1_name then ; local name = __ifa1_name
+	local __ifa1_name = nextarg(); if __ifa1_name then local name = __ifa1_name
 
 
 	local vargsAdded = false

@@ -1,4 +1,4 @@
-local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end; local Lexer = {  }
+local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end;local Lexer = {  }
 Lexer.__index = Lexer
 
 function Lexer.new(str)
@@ -38,13 +38,13 @@ function Lexer:_readPattern(p, extra)
 
 	if afterLastNLSpace then 
 	local nlCount = 0
-	for nl in txt:gmatch("\n") do ; nlCount = nlCount + 1 end
+	for nl in txt:gmatch("\n") do nlCount = nlCount + 1 end
 	self.line = self.line + nlCount
 	self.col = 1 + #afterLastNLSpace else 
 
 
 	local tabCount = 0
-	for tab in txt:gmatch("\t") do ; tabCount = tabCount + (1) end
+	for tab in txt:gmatch("\t") do tabCount = tabCount + (1) end
 
 	self.col = self.col + (#txt - tabCount + (tabCount * 4)) end
 
@@ -99,7 +99,7 @@ end
 
 function Lexer:_readOneLineString()
 	local start = self:_readPattern("^[\"\']")
-	if not start then ; return  end
+	if not start then return  end
 
 	local strCharacter = start
 
@@ -116,7 +116,7 @@ function Lexer:_readOneLineString()
 
 
 	local fquot = self:_readPattern("^" .. strCharacter)
-	if not fquot then ; self:error("unterminated string") end
+	if not fquot then self:error("unterminated string") end
 	table.insert(sbuf, fquot)
 
 

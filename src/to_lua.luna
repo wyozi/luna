@@ -213,11 +213,6 @@ function luafier.internalToLua(node, opts, buf)
 				if i > 1 then buf:nl() end
 			end
 
-			-- if something has already been done on this line add semicolon
-			if buf.hasIndented then
-				buf:append("; ")
-			end
-
 			toLua(snode)
 		end
 
@@ -551,7 +546,7 @@ function luafier.toLua(node, useropts)
 	local bufIndentString = opts.prettyPrint and opts.indentString or ""
 
 	local buf = luaBuffer.new(bufIndentString, opts.nlString, not opts.prettyPrint)
-	buf:append(lunaInclusions)
+	buf:append(lunaInclusions); buf:append(";")
 
 	luafier.internalToLua(node, opts, buf)
 	return buf:tostring()
