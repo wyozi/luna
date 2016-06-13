@@ -84,6 +84,16 @@ x ||= print("exec")
 -- nothing prints, expression is not evaluated if x is truthy
 ```
 
+#### `return if` (implemented: ✔)
+
+```lua
+function fn(x: number)
+	return false if x < 0
+
+	return 2 ^ x
+end
+```
+
 #### Pattern matching (implemented: ✘)
 
 ```lua
@@ -140,15 +150,5 @@ function obj:Method()
 end
 function obj:Callback(arg)
 	print(arg)
-end
-```
-
-#### `return if` (implemented: ✘)
-
-```lua
-function fn(x: number)
-	return false if x < 0
-	
-	return 2 ^ x
 end
 ```

@@ -1,6 +1,10 @@
 
 local luafier = {}
 
+function luafier.isNode(o)
+	return type(o) == "table" and not not o.type
+end
+
 -- the last line this node appears on
 function luafier.getNodeLastLine(n)
 	local s = n.line
@@ -8,7 +12,9 @@ function luafier.getNodeLastLine(n)
 
 	local l = s
 	for k,v in ipairs(n) do
-		l = math.max(l, luafier.getNodeLastLine(v))
+		if luafier.isNode(v) then
+			l = math.max(l, luafier.getNodeLastLine(v))
+		end
 	end
 	return l
 end
@@ -16,7 +22,7 @@ end
 function luafier.isParentOf(par, node)
 	if par == node then return true end
 	for k,v in ipairs(par) do
-		if v == node or (type(v) == "table" and luafier.isParentOf(v, node)) then return true end
+		if v == node or (luafier.isNode(v) and luafier.isParentOf(v, node)) then return true end
 	end
 	return false
 end
@@ -311,6 +317,19 @@ function luafier.internalToLua(node, opts, buf)
 			toLua(node[1])
 		end
 
+	elseif node.type == "returnif" then
+		local nif = node:cloneMeta("if")
+		
+		-- copy condition from returnif to if
+		nif[1] = node[2]
+
+		-- create return statement with returnif contents
+		local ncond = node:cloneMeta("return")
+		ncond[1] = node[1]
+		nif[2] = ncond
+		
+		toLua(nif)
+
 	elseif node.type == "break" then
 		buf:append("break")
 
@@ -393,7 +412,7 @@ function luafier.internalToLua(node, opts, buf)
 			toLua(step)
 		end
 		buf:append(" do");
-		wrapIndent(step, b, function()
+		wrapIndent(var, b, function()
 			toLua(b)
 		end, true)
 		buf:append("end")
@@ -410,7 +429,7 @@ function luafier.internalToLua(node, opts, buf)
 		
 		local lndiff = getLinenoDiff(node[2], node[3])
 
-		if lndiff then
+		if lndiff and lndiff > 0 then
 			for i=1,lndiff do buf:nl() end
 		else
 			buf:appendSpace(" ")

@@ -1,0 +1,7 @@
+local f1 = function(x)
+	return "ok" if x == 42
+	return "fail"
+end
+assert(f1(42) == "ok")
+assert(f1("s") == "fail")
+assert(f1() == "fail")

@@ -56,8 +56,15 @@ function Parser:expectedError(expected)
 	return self:error(t)
 end
 
+local node_meta = {}
+node_meta.__index = node_meta
+
+function node_meta:cloneMeta(newType)
+	return setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
+end
+
 function Parser:node(type, ...)
-	local n = { type = type, line = (self.curToken) and (self.curToken.line), col = (self.curToken) and (self.curToken.col)}
+	local n = setmetatable({ type = type, line = (self.curToken) and (self.curToken.line), col = (self.curToken) and (self.curToken.col)}, node_meta)
 
 	local args = {...}
 
@@ -199,10 +206,7 @@ function Parser:stat()
 		self:acceptChain(localfnstmt, {"keyword", "local"}, {"keyword", "function"}, "name", "funcbody") or
 		self:stat_local() or
 
-		-- these were in laststat(). Moved here for some time..
-		-- TODO move back to laststat
-		self:acceptChain(function(_,e) return self:node("return", e) end, {"keyword", "return"}, "explist") or
-		self:acceptChain(function() return self:node("break") end, {"keyword", "break"})
+		self:laststat()
 end
 function Parser:stat_while()
 	local function whileloop(_,cond,_,b)
@@ -307,13 +311,10 @@ function Parser:destructor()
 end
 
 function Parser:laststat()
-	-- not used, see above
-	if self:accept("keyword", "return") then
-		return self:node("return", self:stat())
-	end
-	if self:accept("keyword", "break") then
-		return self:node("break")
-	end
+	return
+		self:acceptChain(function(_,e,_,c) return self:node("returnif", e, c) end, {"keyword", "return"}, "explist", {"keyword", "if"}, "exp") or
+		self:acceptChain(function(_,e) return self:node("return", e) end, {"keyword", "return"}, "explist") or
+		self:acceptChain(function() return self:node("break") end, {"keyword", "break"})
 end
 
 function Parser:funcname()

@@ -49,3 +49,10 @@ local {num, target} = t
 print("num: ", num, " target: ", target)
 local arr = {3, 2}; local [f, s] = arr
 print(f, s)
+
+local function rfn(x)
+	return false if x == nil
+	print("x is not nil!!")
+end
+rfn("test")
+rfn(nil)
