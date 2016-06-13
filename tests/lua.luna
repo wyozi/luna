@@ -1,0 +1,25 @@
+-- Tests vanilla lua code
+
+-- comment
+
+--[[ block comment ]]
+-- [[ block comment2 ]]
+--[[
+	multiline block comment
+]]
+
+local literal = "hello world"
+local literalEscaped = "hello \" quot world"
+local literalEscaped2 = "hello \" \\ \t \n quot world"
+local literalEscaped3 = "end \" backslashes \\"
+
+local block = [[dis a block]]
+local block2 = [[this is a free "quotation" zone]]
+local block3 = [[i also support ]] .. [[ concatenations]]
+assert(block == "dis a block")
+assert(block2 == "this is a free \"quotation\" zone")
+assert(block3 == "i also support  concatenations")
+
+local a, b = 4, 2
+assert(a == 4)
+assert(b == 2)

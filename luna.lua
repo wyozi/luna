@@ -9,17 +9,22 @@ local function loadInput()
 	return io.read("*a")
 end
 
-if args[1] == "compile" or args[1] == "c" then
-	local l = require("src/lexer").new(loadInput())
-	local p = require("src/parser").new(l)
-	local block = p:block()
+_lexer, _parser, _toLua = require("src/lexer"), require("src/parser"), require("src/to_lua").toLua
 
-	local luac = require("src/to_lua").toLua(block)
+function toAST(code)
+	local l = _lexer.new(code)
+	local p = _parser.new(l)
+	return p:block()
+end
+
+compilestring = loadstring or load -- 5.2/5.3 compat
+
+if args[1] == "compile" or args[1] == "c" then
+	local block = toAST(loadInput())
+	local luac = _toLua(block)
 	print(luac)
 elseif args[1] == "ast" then
-	local l = require("src/lexer").new(loadInput())
-	local p = require("src/parser").new(l)
-	local block = p:block()
+	local block = toAST(loadInput())
 	
 	local function printnode(t, i)
 		local indent = ("  "):rep(i or 0)
@@ -61,18 +66,42 @@ elseif args[1] == "ast" then
 	end
 	printnode(block)
 elseif args[1] == "run" then
-	local l = require("src/lexer").new(loadInput())
-	local p = require("src/parser").new(l)
-	local block = p:block()
+	local block = toAST(loadInput())
 
-	local luac = require("src/to_lua").toLua(block)
-	local runner = loadstring or load
+	local luac = _toLua(block)
 	
-	local f, e = runner(luac)
+	local f, e = compilestring(luac)
 	if f then
 		f()
 	else
 		print("compilation failed: ", e)
+	end
+elseif args[1] == "t" or args[1] == "test" then
+	-- OS detection hack! from: http://stackoverflow.com/a/14425862
+	local isWindows = package.config:sub(1,1) == "\\"
+
+	local testls = io.popen(isWindows and "dir /b /a-d tests" or "ls tests")
+	for name in testls:lines() do
+		if name ~= "" then
+			io.write("Running '" .. name .. "' .. ")
+			
+  			local f = io.open("tests/" .. name, "rb")
+			local src = f:read("*a")
+			f:close()
+
+			io.write("luafying .. ")
+			local luafied = _toLua(toAST(src))
+
+			io.write("running .. ")
+			local f, e = compilestring(luafied, "tests/" .. name)
+			if f then
+				f()
+			else
+				error("Lua compilation failed: ", e)
+			end
+
+			print("done")
+		end
 	end
 else
 	print("No command given. Try 'compile', 'ast' or 'run'.")

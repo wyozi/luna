@@ -16,6 +16,9 @@ function Lexer:error(msg, line, col)
 	 error(msg .. " at line " .. (line or self.line) .. " col " .. (col or self.col))
 end
 
+-- Attempts to match given pattern and advances lexer forward if match is found
+-- 'p' must be a Lua pattern string
+-- Returns match as text
 function Lexer:_readPattern(p)
 	local txt = self.buf:match(p, self.pos)
 	if not txt then
@@ -48,11 +51,17 @@ function Lexer:_skipWhitespace()
 	self:_readPattern("^%s+")
 end
 
-function Lexer:_readToken(type, pattern)
+function Lexer:_createToken(type)
 	local pos, line, col = self.pos, self.line, self.col
+	return { type = type, pos = pos, line = line, col = col }
+end
+
+function Lexer:_readToken(type, pattern)
+	local token = self:_createToken(type)
 	local matched = self:_readPattern(pattern)
 	if matched then
-		return { type = type, text = matched, pos = pos, line = line, col = col }
+		token.text = matched
+		return token
 	end
 end
 
@@ -69,37 +78,97 @@ function Lexer:_readIdentifierOrKeyword()
 	return id
 end
 
--- Reads a one line string
--- Exists as its own function so that we can give better errors
-function Lexer:_readOneLineString()
-	local t = self:_readToken("literal", "^\".-[^\\]\"")
-	if t and t.text:find("\n") then
-		self:error("unterminated string", t.line, t.col)
+function Lexer:_readBracketBlock()
+	local start = self:_readPattern("^%[%[")
+	if start then
+		local contentsAndEnd = self:_readPattern("^.-%]%]")
+		if not contentsAndEnd then
+			self:error("unterminated bracket block")
+		end
+
+		return start .. contentsAndEnd
 	end
-	return t
+end
+
+-- Reads a one line string
+function Lexer:_readOneLineString()
+	local start = self:_readPattern("^\"")
+	if not start then return end
+
+	local token = self:_createToken("literal")
+	token.pos = token.pos - 1
+	token.col = token.col - 1
+
+	local sbuf = {start}
+
+	while true do
+		-- find the first quotation within string
+		local send = self:_readPattern("^[^\"]*")
+		table.insert(sbuf, send)
+
+		-- read the following quotation
+		local fquot = self:_readPattern("^\"")
+		if not fquot then self:error("unterminated string") end
+		table.insert(sbuf, fquot)
+
+		-- match the backslaces preceding that quot (the quot mark is not matched in 'send' so we can match from end)
+		local bslashes = send:match("\\+$")
+		if not bslashes or #bslashes % 2 == 0 then -- even amount or no bslashes; terminate string here 
+			break
+		end
+	end
+
+	token.text = table.concat(sbuf, "")
+
+	return token
+end
+
+function Lexer:_readBlockString()
+	local token = self:_createToken("literal")
+
+	local block = self:_readBracketBlock()
+	if block then
+		token.text = block
+		return token
+	end
+end
+
+function Lexer:_readString()
+	return self:_readOneLineString() or self:_readBlockString()
 end
 
 function Lexer:_readComment()
 	-- TODO store comment in somewhere
-	local c = self:_readToken("comment", "^%-%-[^\n]*")
-	if c then
-		self:_skipWhitespace()
+
+	local start = self:_readPattern("^%-%-")
+	if not start then
+		return
 	end
+
+	local c = self:_createToken("comment")
+
+	local block = self:_readBracketBlock()
+	if block then
+		c.text = block
+	else
+		c.text = self:_readPattern("^[^\n]*")
+	end
+
 	return c
 end
 
 function Lexer:next()
-	self:_skipWhitespace()
-
 	-- read all comments
-	while not not self:_readComment() do end
+	repeat
+		self:_skipWhitespace()
+	until not self:_readComment()
 
 	if self.pos > #self.buf then
 		return nil -- EOF
 	end
 
 	return
-		self:_readOneLineString() or
+		self:_readString() or
 
 		--self:_readComment() or
 

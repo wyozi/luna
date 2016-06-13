@@ -151,7 +151,13 @@ function Parser:block()
 	end
 
 	if not finished and not self:isEOF() then
-		self:error("expected statement; got " .. (self.nextToken and (self.nextToken.type .. " " .. self.nextToken.text)))
+		local post = "got " .. (self.nextToken and (self.nextToken.type .. " " .. self.nextToken.text)) .. " "
+		post = post .. " preceding tokens: "
+		for i=2,0,-1 do
+			local t = self.tokens[#self.tokens - i]
+			if t then post = post .. " [" .. t.type .. ":" .. t.text .. "]" end
+		end
+		self:error("expected statement; " .. post)
 	end
 
 	return block
