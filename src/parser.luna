@@ -312,7 +312,7 @@ function Parser:stat_if()
 	end
 	function _elseif()
 		local cond, b =
-			self:acceptChain(function(e,_,b) return e, b end, "exp", {"keyword", "then"}, "block")
+			self:acceptChain((e,_,b) => do return e, b end, "exp", {"keyword", "then"}, "block")
 		if not b then self:error("expected elseif condition or block") end
 
 		local node = self:node("elseif", cond, b)
@@ -397,9 +397,9 @@ end
 
 function Parser:laststat()
 	return
-		self:acceptChain(function(_,e,_,c) return self:node("returnif", e, c) end, {"keyword", "return"}, "explist", {"keyword", "if"}, "exp") or
-		self:acceptChain(function(_,e) return self:node("return", e) end, {"keyword", "return"}, "explist") or
-		self:acceptChain(function() return self:node("break") end, {"keyword", "break"})
+		self:acceptChain((_,e,_,c) => self:node("returnif", e, c), {"keyword", "return"}, "explist", {"keyword", "if"}, "exp") or
+		self:acceptChain((_,e) => self:node("return", e), {"keyword", "return"}, "explist") or
+		self:acceptChain(() => self:node("break"), {"keyword", "break"})
 end
 
 function Parser:funcname()
