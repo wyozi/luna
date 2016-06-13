@@ -91,7 +91,7 @@ end
 function Parser:acceptChain(fn, ...)
 	local rp = self:_createRestorePoint()
 
-	local line, col = (self.curToken) and (self.curToken.line), (self.curToken) and (self.curToken.col)
+	local line, col = (self.nextToken) and (self.nextToken.line), (self.nextToken) and (self.nextToken.col)
 
 	local t = {}
 	for i,node in pairs{...} do
@@ -136,6 +136,10 @@ end
 
 function Parser:block()
 	local block = self:node("block")
+
+	-- block position should start from next token
+	block.line = self.nextToken.line
+	block.col = self.nextToken.col
 
 	local finished = false
 
@@ -457,7 +461,11 @@ function Parser:exp()
 			if not e2 then
 				self:error("expected right side of binop")
 			end
-			return self:node("binop", b.text, e, e2)
+
+			local node = self:node("binop", b.text, e, e2)
+			node.line = e.line
+			node.col = e.col 
+			return node
 		end
 	end
 	

@@ -1,6 +1,26 @@
 
 local luafier = {}
 
+-- the last line this node appears on
+function luafier.getNodeLastLine(n)
+	local s = n.line
+	if not s then return -1 end
+
+	local l = s
+	for k,v in ipairs(n) do
+		l = math.max(l, luafier.getNodeLastLine(v))
+	end
+	return l
+end
+
+function luafier.isParentOf(par, node)
+	if par == node then return true end
+	for k,v in ipairs(par) do
+		if v == node or (type(v) == "table" and luafier.isParentOf(v, node)) then return true end
+	end
+	return false
+end
+
 -- Gets the linenumber difference between these two nodes
 -- Returns nil if it cannot/shouldn't be derived from these nodes
 function luafier.getLinenoDiff(node1, node2)
@@ -9,7 +29,7 @@ function luafier.getLinenoDiff(node1, node2)
 	if type(node1) == "number" then
 		line1 = node1
 	else
-		line1 = node1.line
+		line1 = luafier.getNodeLastLine(node1)
 	end
 
 	line2 = node2.line
@@ -26,7 +46,7 @@ function luafier.listToLua(list, opts, buf)
 	for i,snode in ipairs(list) do
 		if i > 1 then buf:append(", ") end
 
-		local lndiff = opts.matchLinenumbers and luafier.getLinenoDiff(lastnode or list, snode)
+		local lndiff = opts.matchLinenumbers and lastnode and luafier.getLinenoDiff(lastnode, snode)
 		lastnode = snode
 		if lndiff and lndiff > 0 then
 			for i=1, lndiff do buf:nl() end
@@ -143,19 +163,20 @@ function luafier.internalToLua(node, opts, buf)
 	-- n1 is preceding node
 	-- n2 is the block node
 	-- fn is the function that adds internal contents
-	local function wrapIndent(n1, n2, fn)
+	local function wrapIndent(n1, n2, fn, alsoIfPrettyPrint)
 		local lndiff = getLinenoDiff(n1, n2)
-		local addNl = (lndiff and lndiff > 0) or opts.prettyPrint
+		local addNl = lndiff or ((alsoIfPrettyPrint and opts.prettyPrint) and 1) or 0
 
-		if addNl then
+		if addNl > 0 then
 			buf:nlIndent()
+			for i=1,addNl-1 do buf:nl() end
 		else
 			buf:appendSpace(" ")
 		end
 
 		fn()
 
-		if addNl then
+		if addNl > 0 then
 			buf:nlUnindent()
 		else
 			buf:append(" ")
@@ -253,7 +274,7 @@ function luafier.internalToLua(node, opts, buf)
 		listToLua(pl)
 		buf:append(")")
 
-		wrapIndent(pl, fb, function() toLua(fb) end)
+		wrapIndent(pl, fb, function() toLua(fb) end, true)
 
 		buf:append("end")
 	elseif node.type == "assignment" then
@@ -299,14 +320,23 @@ function luafier.internalToLua(node, opts, buf)
 	elseif node.type == "tableconstructor" then
 		buf:append("{");
 
-		wrapIndent(node, node[1], function() toLua(node[1]) end)
+		-- returns either first field of fieldlist or fieldlist itself
+		local firstField = node[1][1] or node[1]
+
+		-- need to use .line here, otherwise it gets the last line which doesn't work because firstField is child of node
+		wrapIndent(node.line, firstField, function() toLua(node[1]) end)
 		
 		buf:append("}")
 		
 	elseif node.type == "field" then
 		local key, val = node[1], node[2]
 		if key then
-			toLua(key); buf:append(" = "); toLua(val)
+			if key.type == "identifier" then
+				toLua(key)
+			else
+				buf:append("["); toLua(key); buf:append("]")
+			end
+			buf:appendSpace(" "); buf:append("="); buf:appendSpace(" "); toLua(val)
 		else
 			toLua(val)
 		end
@@ -334,7 +364,7 @@ function luafier.internalToLua(node, opts, buf)
 		
 		wrapIndent(node, node[2], function()
 			toLua(node[2])
-		end)
+		end, true)
 
 		if node[3] then
 			toLua(node[3])
@@ -345,14 +375,14 @@ function luafier.internalToLua(node, opts, buf)
 		buf:append("else");
 		wrapIndent(node, node[1], function()
 			toLua(node[1])
-		end)
+		end, true)
 		buf:append("end")
 
 	elseif node.type == "while" then
 		buf:append("while "); toLua(node[1]); buf:append(" do");
 		wrapIndent(node, node[2], function()
 			toLua(node[2])
-		end)
+		end, true)
 		buf:append("end")
 
 	elseif node.type == "fornum" then
@@ -362,25 +392,26 @@ function luafier.internalToLua(node, opts, buf)
 			buf:append(","); buf:appendSpace(" ")
 			toLua(step)
 		end
-		buf:append(" do"); buf:nlIndent()
-		toLua(b)
-		buf:nlUnindent()
+		buf:append(" do");
+		wrapIndent(step, b, function()
+			toLua(b)
+		end, true)
 		buf:append("end")
 	elseif node.type == "forgen" then
 		local names, iter, b = node[1], node[2], node[3]
-		buf:append("for "); toLua(names); buf:append(" in "); toLua(iter); buf:append(" do"); buf:nlIndent()
-		toLua(b)
-		buf:nlUnindent()
+		buf:append("for "); toLua(names); buf:append(" in "); toLua(iter); buf:append(" do");
+		wrapIndent(iter, b, function()
+			toLua(b)
+		end, true)
 		buf:append("end")
 
 	elseif node.type == "binop" then
 		toLua(node[2]); buf:appendSpace(" "); buf:append(node[1]);
 		
 		local lndiff = getLinenoDiff(node[2], node[3])
-		local addNl = (lndiff and lndiff > 0)
 
-		if addNl then
-			buf:nl()
+		if lndiff then
+			for i=1,lndiff do buf:nl() end
 		else
 			buf:appendSpace(" ")
 		end
