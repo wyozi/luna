@@ -52,7 +52,7 @@ function Parser:error(text)
 
 	text = text .. " preceding tokens: "
 	for i=2,0,-1 do
-		local t = self.tokens[#self.tokens - i]
+		local t = self.tokens[self.tokenIndex - 1 - i]
 		if t then text = text .. " [" .. t.type .. ":" .. t.text .. "]" end
 	end
 
@@ -200,13 +200,13 @@ function Parser:stat()
 	return
 		self:acceptChain(function() end, {"symbol", ";"}) or
 		self:acceptChain(assignment, "varlist", {"assignop"}, "explist") or
-		self:functioncall() or
 		self:stat_while() or
 		self:stat_if() or
 		self:stat_for() or
 		self:acceptChain(fnstmt, {"keyword", "function"}, "funcname", "funcbody") or
 		self:acceptChain(localfnstmt, {"keyword", "local"}, {"keyword", "function"}, "name", "funcbody") or
 		self:stat_local() or
+		self:primaryexp() or
 
 		self:laststat()
 end
@@ -360,10 +360,7 @@ function Parser:varlist()
 end
 
 function Parser:name()
-	local i = self:accept("identifier")
-	if i then
-		return i
-	end
+	return self:accept("identifier")
 end
 
 function Parser:typedname()
@@ -431,7 +428,27 @@ function Parser:explist()
 	return exps
 end
 
-function Parser:exp()
+function Parser:primaryexp()
+	local pref = self:prefixexp()
+	if not pref then return end
+
+	local n = pref
+
+	while true do
+		local nn = self:acceptChain(function(_, nm) return self:node("index", n, nm) end, {"symbol", "."}, "name") or
+			self:acceptChain(function(_, e) return self:node("index", n, e) end, {"symbol", "["}, "exp", {"symbol", "]"}) or
+			self:acceptChain(function(_, nm, a) return self:node("methodcall", n, nm, a) end, {"symbol", ":"}, "name", "args") or
+			self:acceptChain(function(a) return self:node("funccall", n, a) end, "args")
+		
+		if not nn then
+			return n
+		end
+
+		n = nn
+	end
+end
+
+function Parser:simpleexp()
 	-- check if it's a short function
 	local shortFn = self:acceptChain(function(_,p,_,_,b) return self:node("sfunc", p, b) end,
 		{"symbol", "("}, "parlist", {"symbol", ")"}, {"symbol", "=>"}, "sfuncbody")
@@ -439,12 +456,7 @@ function Parser:exp()
 		return shortFn
 	end
 
-	local unop = self:accept("unop")
-	if unop then
-		return self:node("unop", unop.text, self:exp())
-	end
-
-	local e =
+	return
 		self:accept("identifier", "nil") or
 		self:accept("identifier", "false") or
 		self:accept("identifier", "true") or
@@ -452,22 +464,30 @@ function Parser:exp()
 		self:accept("literal") or
 		self:varargs() or
 		self:func() or
-		self:functioncall() or
-		self:prefixexp() or
-		self:tableconstructor()
+		self:tableconstructor() or
+		self:primaryexp()
+end
+
+function Parser:subexp()
+	local unop = self:accept("unop")
+	if unop then
+		return self:node("unop", unop.text)
+	end
+
+	local e = self:simpleexp()
 
 	if e then
 		-- check if exp is directly followed by binary operator
 		local b = self:accept("binop")
 		if b then
-			local e2 = self:exp()
+			local e2 = self:subexp()
 			if not e2 then
 				self:error("expected right side of binop")
 			end
 
 			local node = self:node("binop", b.text, e, e2)
 			node.line = e.line
-			node.col = e.col 
+			node.col = e.col
 			return node
 		end
 	end
@@ -475,18 +495,15 @@ function Parser:exp()
 	return e
 end
 
+function Parser:exp()
+	return self:subexp()
+end
+
 function Parser:prefixexp()
 	return
-		self:var() or
-		self:acceptChain(function(_,e,_) return e end, {"symbol", "("}, "exp", {"symbol", ")"})
+		self:name() or
+		self:acceptChain(function(_,e,_) return self:node("parexp", e) end, {"symbol", "("}, "exp", {"symbol", ")"})
 end
-
-function Parser:functioncall()
-	return
-		self:acceptChain(function(p,a) return self:node("funccall", p, a) end, "prefixexp", "args") or
-		self:acceptChain(function(p,_,n,a) return self:node("methodcall", p, n, a) end, "prefixexp", {"symbol", ":"}, "name", "args")
-end
-
 
 function Parser:args()
 	return

@@ -48,3 +48,10 @@ local function lfunc(a, b)
 	return b, a
 end
 local lfunc2 = function(...) return ... end
+
+local t = { x = 3 }
+local function foo()
+	return t
+end
+foo().x = 2
+local sesh = foo().x * 3

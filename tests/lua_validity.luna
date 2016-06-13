@@ -1,0 +1,3 @@
+-- Checks validity of some Lua code constructs
+
+assert((2 + 4) * 8 == 48)
