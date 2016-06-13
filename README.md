@@ -117,16 +117,18 @@ local [first, second] = vecs
 print(first, second)
 ```
 
-#### For loop table/array destructuring (implemented: ✘)
+#### `for of` (implemented: ✔)
+
+Note: destructuring within loop variable is only supported in `for of` loops at the moment.
 
 ```lua
 local people = { { name = "Mike", age = 25 }, { name = "John", age = 47 } }
-for _, {name, age} in pairs(people) do
+for {name, age} of people do
 	print(name, age)
 end
 
 local vecs = { { "a", "b" }, { "o", "p" } }
-for _, [first, second] in pairs(vecs) do
+for [first, second] of vecs do
 	print(first, second)
 end
 ```

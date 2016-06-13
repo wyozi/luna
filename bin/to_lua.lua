@@ -451,6 +451,31 @@ function luafier.internalToLua(node, opts, buf)
 	wrapIndent(iter, b, function ()
 		toLua(b)
 	end, 
+	true); buf:append("end") elseif node.type == "forof" then 
+	local var, iter, b = node[1], node[2], node[3]
+
+	local destr
+	if var.type == "tabledestructor" or var.type == "arraydestructor" then 
+	local varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
+
+
+	local newVar = var:cloneMeta("identifier")
+	newVar.text = varName
+
+
+	destr = var:cloneMeta("localdestructor")
+	destr[1] = var
+	destr[2] = newVar
+
+	var = newVar end
+
+
+	buf:append("for _,")
+	toLua(var); buf:append(" in pairs("); toLua(iter); buf:append(") do")
+	wrapIndent(iter, b, function ()
+		if destr then ; toLua(destr) end
+		toLua(b)
+	end, 
 	true); buf:append("end") elseif node.type == "binop" then 
 
 	toLua(node[2])

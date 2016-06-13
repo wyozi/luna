@@ -278,12 +278,19 @@ function Parser:stat_for()
 	local function forgen(_, names, _, iter, _, b)
 		return self:node("forgen", names, iter, b)
 	end
+	local function forof(_, var, _, iter, _, b)
+		return self:node("forof", var, iter, b)
+	end
 
 	return self:acceptChain(fornum_step, { "keyword", "for" }, "name", { "assignop", "=" }, "exp", { "symbol", "," }, "exp", { "symbol", "," }, "exp", { "keyword", "do" }, "block") or
 	self:acceptChain(fornum, { "keyword", "for" }, "name", { "assignop", "=" }, "exp", { "symbol", "," }, "exp", { "keyword", "do" }, "block") or
-	self:acceptChain(forgen, { "keyword", "for" }, "typednamelist", { "keyword", "in" }, "exp", { "keyword", "do" }, "block")
+	self:acceptChain(forgen, { "keyword", "for" }, "typednamelist", { "keyword", "in" }, "exp", { "keyword", "do" }, "block") or
+	self:acceptChain(forof, { "keyword", "for" }, "for_var", { "identifier", "of" }, "exp", { "keyword", "do" }, "block")
 end
 
+function Parser:for_var()
+	return self:name() or self:destructor()
+end
 function Parser:stat_local()
 	local function localstmt(_, namelist)
 		local explist
