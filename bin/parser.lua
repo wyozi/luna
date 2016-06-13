@@ -1,4 +1,4 @@
-local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end;local unpack = unpack or table.unpack
+local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local t=__L_to(o) if t=="table" then local mt = __L_gmt(o)return (mt and mt.__type) or t end return t end;local unpack = unpack or table.unpack
 local gettype = type
 
 local Parser = {  }
@@ -30,7 +30,7 @@ function Parser:next()
 
 
 
-	self.tokenIndex = self.tokenIndex + 1
+	self.tokenIndex = self.tokenIndex + (1)
 	return self.curToken
 end
 
@@ -44,12 +44,7 @@ end
 
 function Parser:error(text)
 	__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
-	local line, col
-	if self.nextToken then ;line, col = self.nextToken.line, self.nextToken.col else 
-
-	line, col = -1, -1 end
-
-
+	local line, col = (self.nextToken and self.nextToken.line) or -1, (self.nextToken and self.nextToken.col) or -1
 	text = text .. " preceding tokens: "
 	for i = 2, 0, -1 do
 		local t = self.tokens[self.tokenIndex - 1 - i]
@@ -65,6 +60,7 @@ function Parser:expectedError(expected)
 end
 local node_meta = {  }
 node_meta.__index = node_meta
+node_meta.__type = "lunanode"
 
 function node_meta:cloneMeta(newType)
 	__L_as(__L_t(newType) == "string", "Parameter 'newType' must be a string")
@@ -72,7 +68,7 @@ function node_meta:cloneMeta(newType)
 end
 function Parser:node(type, ...)
 	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")
-	local n = setmetatable({ type = type, line = (self.curToken) and (self.curToken.line), col = (self.curToken) and (self.curToken.col) }, node_meta)
+	local n = setmetatable({ type = type, line = (self.curToken and self.curToken.line), col = (self.curToken and self.curToken.col) }, node_meta)
 	local args = { ... }
 
 
@@ -89,7 +85,7 @@ function Parser:node(type, ...)
 end
 function Parser:accept(type, text)
 	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string");__L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string")
-	if self.nextToken and self.nextToken.type == type and (not text or self.nextToken.text == text) then return self:next() end
+	if (self.nextToken and self.nextToken.type) == type and (not text or self.nextToken.text == text) then return self:next() end
 end
 
 function Parser:expect(type, text)
@@ -106,7 +102,7 @@ end
 function Parser:acceptChain(fn, ...)
 	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
 	local rp = self:_createRestorePoint()
-	local line, col = (self.nextToken) and (self.nextToken.line), (self.nextToken) and (self.nextToken.col)
+	local line, col = (self.nextToken and self.nextToken.line), (self.nextToken and self.nextToken.col)
 
 	local t = {  }
 	for i, node in pairs({ ... }) do
@@ -141,7 +137,7 @@ function Parser:acceptChain(fn, ...)
 	local ret = { fn(unpack(t)) }
 
 
-	if ret[1] and type(ret[1]) == "table" and ret[1].type then 
+	if gettype(ret[1]) == "table" and ret[1].type then 
 	ret[1].line = line
 	ret[1].col = col end
 
@@ -173,7 +169,7 @@ function chain_meta:done(fn)
 	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
 	local parser = self.parser
 	local rp = parser:_createRestorePoint()
-	local line, col = (parser.nextToken) and (parser.nextToken.line), (parser.nextToken) and (parser.nextToken.col)
+	local line, col = (parser.nextToken and parser.nextToken.line), (parser.nextToken and parser.nextToken.col)
 
 	local t = {  }
 	for i, ch in ipairs(self.chain) do
@@ -260,8 +256,9 @@ function Parser:stat()
 		return self:node("localfunc", name, body)
 	end
 
-	return self:acceptChain(function ()  end, { "symbol", ";" }) or
-	self:acceptChain(assignment, "varlist", { "assignop" }, "explist") or
+	self:accept("symbol", ";")
+
+	return self:acceptChain(assignment, "varlist", { "assignop" }, "explist") or
 	self:stat_while() or
 	self:stat_if() or
 	self:stat_for() or
@@ -274,15 +271,8 @@ function Parser:stat()
 end
 
 function Parser:stat_while()
-	local function whileloop(_, cond, _, b)
-		return self:node("while", cond, b)
-	end
-	local function repeatloop(_, b, cond)
-		return self:node("repeat", b, cond)
-	end
-
-	return self:acceptChain(whileloop, { "keyword", "while" }, "exp", { "keyword", "do" }, "block") or
-	self:acceptChain(repeatloop, { "keyword", "repeat" }, "block", "exp")
+	return self:acceptChain(function(_, cond, _, b) return self:node("while", cond, b) end, { "keyword", "while" }, "exp", { "keyword", "do" }, "block") or
+	self:acceptChain(function(_, b, cond) return self:node("repeat", b, cond) end, { "keyword", "repeat" }, "block", "exp")
 end
 
 function Parser:stat_if()
@@ -398,6 +388,7 @@ function Parser:funcname()
 
 	local name = self:name()
 	if not name then return  end
+
 	namebuf[1] = name
 
 	while self:accept("symbol", ".") do 

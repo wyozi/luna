@@ -30,7 +30,7 @@ function Parser:next()
 		end
 	end
 	
-	self.tokenIndex = self.tokenIndex + 1
+	self.tokenIndex += 1
 	return self.curToken
 end
 
@@ -43,12 +43,7 @@ function Parser:_createRestorePoint()
 end
 
 function Parser:error(text: string)
-	local line, col
-	if self.nextToken then
-		line, col = self.nextToken.line, self.nextToken.col
-	else
-		line, col = -1, -1
-	end
+	local line, col = self.nextToken?.line or -1, self.nextToken?.col or -1
 
 	text = text .. " preceding tokens: "
 	for i=2,0,-1 do
@@ -59,19 +54,20 @@ function Parser:error(text: string)
 	error("[Luna Parser] " .. text .. " at line " .. line .. " col " .. col)
 end
 function Parser:expectedError(expected: string)
-	local t = string.format("expected %s, got %s", expected, (self.nextToken and self.nextToken.type))
+	local t = string.format("expected %s, got %s", expected, self.nextToken?.type)
 	return self:error(t)
 end
 
 local node_meta = {}
 node_meta.__index = node_meta
+node_meta.__type = "lunanode"
 
 function node_meta:cloneMeta(newType: string)
 	return setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
 end
 
 function Parser:node(type: string, ...)
-	local n = setmetatable({ type = type, line = (self.curToken) and (self.curToken.line), col = (self.curToken) and (self.curToken.col)}, node_meta)
+	local n = setmetatable({ type = type, line = self.curToken?.line, col = self.curToken?.col}, node_meta)
 
 	local args = {...}
 
@@ -88,7 +84,7 @@ function Parser:node(type: string, ...)
 	return n
 end
 function Parser:accept(type: string, text: string?)
-	if self.nextToken and self.nextToken.type == type and (not text or self.nextToken.text == text) then
+	if self.nextToken?.type == type and (not text or self.nextToken.text == text) then
 		return self:next()
 	end
 end
@@ -106,7 +102,7 @@ end
 function Parser:acceptChain(fn: function, ...)
 	local rp = self:_createRestorePoint()
 
-	local line, col = (self.nextToken) and (self.nextToken.line), (self.nextToken) and (self.nextToken.col)
+	local line, col = self.nextToken?.line, self.nextToken?.col
 
 	local t = {}
 	for i,node in pairs{...} do
@@ -141,7 +137,7 @@ function Parser:acceptChain(fn: function, ...)
 	local ret = {fn(unpack(t))}
 
 	-- if chain results into a node, it should obviously be positioned at beginning of chain, which is done here
-	if ret[1] and type(ret[1]) == "table" and ret[1].type then
+	if gettype(ret[1]) == "table" and ret[1].type then
 		ret[1].line = line
 		ret[1].col = col
 	end
@@ -173,7 +169,7 @@ function chain_meta:done(fn: function)
 	local parser = self.parser
 	
 	local rp = parser:_createRestorePoint()
-	local line, col = (parser.nextToken) and (parser.nextToken.line), (parser.nextToken) and (parser.nextToken.col)
+	local line, col = parser.nextToken?.line, parser.nextToken?.col
 	
 	local t = {}
 	for i, ch in ipairs(self.chain) do
@@ -260,8 +256,9 @@ function Parser:stat()
 		return self:node("localfunc", name, body)
 	end
 
+	self:accept("symbol", ";") -- accept semicolon if there is one
+
 	return
-		self:acceptChain(function() end, {"symbol", ";"}) or
 		self:acceptChain(assignment, "varlist", {"assignop"}, "explist") or
 		self:stat_while() or
 		self:stat_if() or
@@ -274,16 +271,9 @@ function Parser:stat()
 		self:laststat()
 end
 function Parser:stat_while()
-	local function whileloop(_,cond,_,b)
-		return self:node("while", cond, b)
-	end
-	local function repeatloop(_,b,cond)
-		return self:node("repeat", b, cond)
-	end
-
 	return
-		self:acceptChain(whileloop, {"keyword", "while"}, "exp", {"keyword", "do"}, "block") or
-		self:acceptChain(repeatloop, {"keyword", "repeat"}, "block", "exp")
+		self:acceptChain((_, cond, _, b) => self:node("while", cond, b), {"keyword", "while"}, "exp", {"keyword", "do"}, "block") or
+		self:acceptChain((_, b, cond) => self:node("repeat", b, cond), {"keyword", "repeat"}, "block", "exp")
 end
 function Parser:stat_if()
 	local _else, _elseif
@@ -397,7 +387,8 @@ function Parser:funcname()
 	local namebuf = self:node("funcname")
 
 	local name = self:name()
-	if not name then return end
+	return if not name
+
 	namebuf[1] = name
 
 	while self:accept("symbol", ".") do

@@ -50,7 +50,7 @@ function luafier.getLinenoDiff(node1, node2)
 	return line2 - line1
 end
 
-function luafier.listToLua(list, opts, buf)
+function luafier.listToLua(list, opts, buf: luabuf)
 	local lastnode
 	for i,snode in ipairs(list) do
 		if i > 1 then buf:append(", ") end
@@ -140,6 +140,7 @@ end
 
 local luaBuffer = {}
 luaBuffer.__index = luaBuffer
+luaBuffer.__type = "luabuf"
 
 function luaBuffer.new(indentString, nlString, noExtraSpace)
 	return setmetatable({
@@ -198,7 +199,7 @@ local _safeSemicolon = {
 	["assignment"] = true, ["funccall"] = true
 }
 
-function luafier.internalToLua(node, opts, buf)
+function luafier.internalToLua(node, opts, buf: luabuf)
 	local function toLua(lnode)
 		luafier.internalToLua(lnode, opts, buf)
 	end
@@ -274,7 +275,7 @@ function luafier.internalToLua(node, opts, buf)
 		end
 		
 	elseif node.type == "localdestructor" then
-		local destructor, target = node[1], node[2]
+		local [destructor, target] = node
 		local names = destructor[1]
 
 		-- if target is not a simple identifier, create a tmp var for it
@@ -418,7 +419,7 @@ function luafier.internalToLua(node, opts, buf)
 		buf:append("}")
 		
 	elseif node.type == "field" then
-		local key, val = node[1], node[2]
+		local [key, val] = node
 		if key then
 			if key.type == "identifier" then
 				toLua(key)
@@ -481,7 +482,7 @@ function luafier.internalToLua(node, opts, buf)
 		buf:append("until "); toLua(node[2])
 
 	elseif node.type == "fornum" then
-		local var, low, high, step, b = node[1], node[2], node[3], node[4], node[5]
+		local [var, low, high, step, b] = node
 		buf:append("for "); toLua(var); buf:appendSpace(" "); buf:append("="); buf:appendSpace(" "); toLua(low); buf:append(","); buf:appendSpace(" "); toLua(high)
 		if step then
 			buf:append(","); buf:appendSpace(" ")
@@ -493,14 +494,14 @@ function luafier.internalToLua(node, opts, buf)
 		end, true)
 		buf:append("end")
 	elseif node.type == "forgen" then
-		local names, iter, b = node[1], node[2], node[3]
+		local [names, iter, b] = node
 		buf:append("for "); toLua(names); buf:append(" in "); toLua(iter); buf:append(" do");
 		wrapIndent(iter, b, function()
 			toLua(b)
 		end, true)
 		buf:append("end")
 	elseif node.type == "forof" then
-		local var, iter, b = node[1], node[2], node[3]
+		local [var, iter, b] = node
 
 		local destr
 		if var.type == "tabledestructor" or var.type == "arraydestructor" then
@@ -586,7 +587,7 @@ local defopts = {
 -- The code that is added as first thing in all Luafied files
 local lunaInclusions = 
 [[local ]] .. LUAFN_ASSERT .. [[,__L_to,__L_gmt=assert,type,getmetatable;]] ..
-[[local function ]] .. LUAFN_TYPE .. [[(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end]]
+[[local function ]] .. LUAFN_TYPE .. [[(o)local t=__L_to(o) if t=="table" then local mt = __L_gmt(o)return (mt and mt.__type) or t end return t end]]
 
 function luafier.toLua(node, useropts)
 	local opts = {}

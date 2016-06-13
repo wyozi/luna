@@ -1,4 +1,4 @@
-local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end;
+local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local t=__L_to(o) if t=="table" then local mt = __L_gmt(o)return (mt and mt.__type) or t end return t end;
 local luafier = {  }
 
 local LUAFN_ASSERT = "__L_as"
@@ -51,10 +51,10 @@ function luafier.getLinenoDiff(node1, node2)
 end
 
 function luafier.listToLua(list, opts, buf)
+	__L_as(__L_t(buf) == "luabuf", "Parameter 'buf' must be a luabuf")
 	local lastnode
 	for i, snode in ipairs(list) do
 		if i > 1 then buf:append(", ") end
-
 		local lndiff = opts.matchLinenumbers and lastnode and luafier.getLinenoDiff(lastnode, snode)
 		lastnode = snode
 		if lndiff and lndiff > 0 then 
@@ -140,6 +140,7 @@ end
 
 local luaBuffer = {  }
 luaBuffer.__index = luaBuffer
+luaBuffer.__type = "luabuf"
 
 function luaBuffer.new(indentString, nlString, noExtraSpace)
 	return setmetatable({
@@ -199,13 +200,13 @@ local _safeSemicolon = {
 }
 
 function luafier.internalToLua(node, opts, buf)
+	__L_as(__L_t(buf) == "luabuf", "Parameter 'buf' must be a luabuf")
 	local function toLua(lnode)
 		luafier.internalToLua(lnode, opts, buf)
 	end
 	local function listToLua(lnode)
 		luafier.listToLua(lnode, opts, buf)
 	end
-
 
 
 	local function getLinenoDiff(node1, node2)
@@ -274,7 +275,7 @@ function luafier.internalToLua(node, opts, buf)
 
 
 
-	local destructor, target = node[1], node[2]
+	__L_as(node, "cannot destructure nil");local destructor, target = node[1], node[2]
 	local names = destructor[1]
 
 
@@ -418,7 +419,7 @@ function luafier.internalToLua(node, opts, buf)
 	buf:append("}") elseif node.type == "field" then 
 
 
-	local key, val = node[1], node[2]
+	__L_as(node, "cannot destructure nil");local key, val = node[1], node[2]
 	if key then 
 	if key.type == "identifier" then 
 	toLua(key) else 
@@ -481,7 +482,7 @@ function luafier.internalToLua(node, opts, buf)
 	true)
 	buf:append("until ");toLua(node[2]) elseif node.type == "fornum" then 
 
-	local var, low, high, step, b = node[1], node[2], node[3], node[4], node[5]
+	__L_as(node, "cannot destructure nil");local var, low, high, step, b = node[1], node[2], node[3], node[4], node[5]
 	buf:append("for ")
 	toLua(var)buf:appendSpace(" ")buf:append("=")buf:appendSpace(" ");toLua(low)buf:append(",")buf:appendSpace(" ");toLua(high)
 	if step then buf:append(",")
@@ -493,14 +494,14 @@ function luafier.internalToLua(node, opts, buf)
 	end, 
 	true)
 	buf:append("end") elseif node.type == "forgen" then 
-	local names, iter, b = node[1], node[2], node[3]
+	__L_as(node, "cannot destructure nil");local names, iter, b = node[1], node[2], node[3]
 	buf:append("for ")
 	toLua(names)buf:append(" in ");toLua(iter)buf:append(" do")
 	wrapIndent(iter, b, function ()
 		toLua(b)
 	end, 
 	true)buf:append("end") elseif node.type == "forof" then 
-	local var, iter, b = node[1], node[2], node[3]
+	__L_as(node, "cannot destructure nil");local var, iter, b = node[1], node[2], node[3]
 
 	local destr
 	if var.type == "tabledestructor" or var.type == "arraydestructor" then 
@@ -585,7 +586,7 @@ local defopts = {
 
 
 local lunaInclusions = [[local ]] .. LUAFN_ASSERT .. [[,__L_to,__L_gmt=assert,type,getmetatable;]] ..
-[[local function ]] .. LUAFN_TYPE .. [[(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end]]
+[[local function ]] .. LUAFN_TYPE .. [[(o)local t=__L_to(o) if t=="table" then local mt = __L_gmt(o)return (mt and mt.__type) or t end return t end]]
 
 
 function luafier.toLua(node, useropts)
