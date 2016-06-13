@@ -97,23 +97,27 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 
 		if type then 
 		local tcnode = parlist:cloneMeta("funccall")
-		tcnode[1] = { type = "identifier", text = LUAFN_ASSERT }
-		local args = { type = "explist" }
+		tcnode[1] = tcnode:cloneMeta("identifier", { text = LUAFN_ASSERT })
+		local args = tcnode:cloneMeta("explist")
 		tcnode[2] = args
 
-		local typeChecker = {
-			type = "binop", "==", 
-			{ type = "funccall", { type = "identifier", text = LUAFN_TYPE }, { type = "identifier", text = var } }, 
-			{ type = "literal", text = "\"" .. type .. "\"" }
-		}
+		local typeChecker = parlist:cloneMeta("binop", {
+			"==", 
+			parlist:cloneMeta("funccall", { parlist:cloneMeta("identifier", { text = LUAFN_TYPE }), parlist:cloneMeta("identifier", { text = var }) }), 
+			parlist:cloneMeta("literal", { text = "\"" .. type .. "\"" })
+		})
 		if nillable then 
-		local nilChecker = { type = "binop", "==", { type = "identifier", text = var }, { type = "keyword", text = "nil" } }
-		args[1] = { type = "binop", "or", nilChecker, typeChecker } else 
+		local nilChecker = parlist:cloneMeta("binop", {
+			"==", 
+			parlist:cloneMeta("identifier", { text = var }), 
+			parlist:cloneMeta("keyword", { text = "nil" })
+		})
+		args[1] = parlist:cloneMeta("binop", { "or", nilChecker, typeChecker }) else 
 
 		args[1] = typeChecker end
 
 
-		args[2] = { type = "literal", text = [["Parameter ']] .. var .. [[' must be a ]] .. type .. [["]] }
+		args[2] = parlist:cloneMeta("literal", { text = [["Parameter ']] .. var .. [[' must be a ]] .. type .. [["]] })
 
 		table.insert(funcbody, i, tcnode) end
 
@@ -125,11 +129,8 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 		value.line = nil
 
 		as[1] = "="
-		as[2] = { type = "identifier", text = var }
-		as[3] = {
-			type = "binop", "or", 
-			as[2], value
-		}
+		as[2] = as:cloneMeta("identifier", { text = var })
+		as[3] = as:cloneMeta("binop", { "or", as[2], value })
 
 		table.insert(funcbody, i, as) end
 	end
@@ -200,7 +201,7 @@ local _safeSemicolon = {
 }
 
 function luafier.internalToLua(node, opts, buf)
-	__L_as(__L_t(buf) == "luabuf", "Parameter 'buf' must be a luabuf")
+	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode");__L_as(__L_t(buf) == "luabuf", "Parameter 'buf' must be a luabuf")
 	local function toLua(lnode)
 		luafier.internalToLua(lnode, opts, buf)
 	end
@@ -440,11 +441,11 @@ function luafier.internalToLua(node, opts, buf)
 	node[1][1][1][1].text = varName
 
 
-	local varId = { line = node[1].line, type = "identifier", text = varName }
-	local checkerIf = { line = node[1].line, type = "if", varId, node[2], node[3] }
+	local varId = node:cloneMeta("identifier", { text = varName })
+	local checkerIf = node:cloneMeta("if", { varId, node[2], node[3] })
 
 
-	local restoreBinding = { type = "local", { type = "identifier", text = origAssignedVarName }, varId }
+	local restoreBinding = node:cloneMeta("local", { node:cloneMeta("identifier", { text = origAssignedVarName }), varId })
 	table.insert(checkerIf[2], 1, restoreBinding)
 
 	toLua(node[1])

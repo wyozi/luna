@@ -62,8 +62,20 @@ local node_meta = {}
 node_meta.__index = node_meta
 node_meta.__type = "lunanode"
 
-function node_meta:cloneMeta(newType: string)
-	return setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
+function node_meta:cloneMeta(newType: string, merget: table?)
+	local cloned = setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
+	if merget then
+		for k,v in pairs(merget) do cloned[k] = v end
+	end
+	return cloned
+end
+function node_meta:clone(merget: table?)
+	local cloned = setmetatable({}, node_meta)
+	for k,v in pairs(self) do cloned[k] = v end
+	if merget then
+		for k,v in pairs(merget) do cloned[k] = v end
+	end
+	return cloned
 end
 
 function Parser:node(type: string, ...)
@@ -81,6 +93,13 @@ function Parser:node(type: string, ...)
 		n[i] = v
 	end
 
+	return n
+end
+function Parser:token2node(token: lunatoken?)
+	return nil if not token
+
+	local n = self:node(token.type)
+	n.text, n.line, n.col = token.text, token.line, token.col
 	return n
 end
 function Parser:accept(type: string, text: string?)
@@ -425,7 +444,7 @@ function Parser:varlist()
 end
 
 function Parser:name()
-	return self:accept("identifier")
+	return self:token2node(self:accept("identifier"))
 end
 
 function Parser:typedname()
@@ -437,7 +456,7 @@ end
 function Parser:type()
 	if self:accept("symbol", ":") then
 		-- function is an unfortunate keyword, but we want it to be valid type name; thus this hack
-		local n = self:accept("identifier") or self:accept("keyword", "function")
+		local n = self:name() or self:token2node(self:accept("keyword", "function"))
 		return if not n
 
 		local isOptional = self:accept("symbol", "?")
@@ -514,11 +533,11 @@ function Parser:simpleexp()
 	return shortFn if shortFn
 
 	return
-		self:accept("keyword", "nil") or
-		self:accept("keyword", "false") or
-		self:accept("keyword", "true") or
-		self:accept("number") or
-		self:accept("literal") or
+		self:token2node(self:accept("keyword", "nil")) or
+		self:token2node(self:accept("keyword", "false")) or
+		self:token2node(self:accept("keyword", "true")) or
+		self:token2node(self:accept("number")) or
+		self:token2node(self:accept("literal")) or
 		self:varargs() or
 		self:func() or
 		self:tableconstructor() or
@@ -646,7 +665,7 @@ end
 
 function Parser:field()
 	return
-		self:acceptChain((_, n, _, _,e) => self:node("field", n, e), {"symbol", "["}, {"literal"}, {"symbol", "]"}, {"assignop", "="}, "exp") or
+		self:acceptChain((_, n, _, _,e) => self:node("field", self:token2node(n), e), {"symbol", "["}, {"literal"}, {"symbol", "]"}, {"assignop", "="}, "exp") or
 		self:acceptChain((n,_,e) => self:node("field", n, e), "name", {"assignop", "="}, "exp") or
 		self:acceptChain((e) => self:node("field", nil, e), "exp")
 end

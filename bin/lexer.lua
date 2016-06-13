@@ -56,9 +56,12 @@ function Lexer:_skipWhitespace()
 	self:_readPattern("^%s+")
 end
 
+local token_meta = {  }
+token_meta.__type = "lunatoken"
+
 function Lexer:_createToken(type)
 	local pos, line, col = self.pos, self.line, self.col
-	return { type = type, pos = pos, line = line, col = col }
+	return setmetatable({ type = type, pos = pos, line = line, col = col }, token_meta)
 end
 
 function Lexer:_readToken(type, pattern, extra)

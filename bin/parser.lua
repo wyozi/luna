@@ -62,10 +62,22 @@ local node_meta = {  }
 node_meta.__index = node_meta
 node_meta.__type = "lunanode"
 
-function node_meta:cloneMeta(newType)
-	__L_as(__L_t(newType) == "string", "Parameter 'newType' must be a string")
-	return setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
+function node_meta:cloneMeta(newType, merget)
+	__L_as(__L_t(newType) == "string", "Parameter 'newType' must be a string");__L_as(merget == nil or __L_t(merget) == "table", "Parameter 'merget' must be a table")
+	local cloned = setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
+	if merget then for k, v in pairs(merget) do ;cloned[k] = v end end
+
+	return cloned
 end
+function node_meta:clone(merget)
+	__L_as(merget == nil or __L_t(merget) == "table", "Parameter 'merget' must be a table")
+	local cloned = setmetatable({  }, node_meta)
+	for k, v in pairs(self) do ;cloned[k] = v end
+	if merget then for k, v in pairs(merget) do ;cloned[k] = v end end
+
+	return cloned
+end
+
 function Parser:node(type, ...)
 	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")
 	local n = setmetatable({ type = type, line = (self.curToken and self.curToken.line), col = (self.curToken and self.curToken.col) }, node_meta)
@@ -81,6 +93,13 @@ function Parser:node(type, ...)
 		n[i] = v
 	end
 
+	return n
+end
+function Parser:token2node(token)
+	__L_as(token == nil or __L_t(token) == "lunatoken", "Parameter 'token' must be a lunatoken")
+	if not token then return nil end
+	local n = self:node(token.type)
+	n.text, n.line, n.col = token.text, token.line, token.col
 	return n
 end
 function Parser:accept(type, text)
@@ -425,7 +444,7 @@ function Parser:varlist()
 end
 
 function Parser:name()
-	return self:accept("identifier")
+	return self:token2node(self:accept("identifier"))
 end
 
 function Parser:typedname()
@@ -437,7 +456,7 @@ end
 function Parser:type()
 	if self:accept("symbol", ":") then 
 
-	local n = self:accept("identifier") or self:accept("keyword", "function")
+	local n = self:name() or self:token2node(self:accept("keyword", "function"))
 	if not n then return  end
 
 	local isOptional = self:accept("symbol", "?")
@@ -513,11 +532,11 @@ function Parser:simpleexp()
 
 	if shortFn then return shortFn end
 
-	return self:accept("keyword", "nil") or
-	self:accept("keyword", "false") or
-	self:accept("keyword", "true") or
-	self:accept("number") or
-	self:accept("literal") or
+	return self:token2node(self:accept("keyword", "nil")) or
+	self:token2node(self:accept("keyword", "false")) or
+	self:token2node(self:accept("keyword", "true")) or
+	self:token2node(self:accept("number")) or
+	self:token2node(self:accept("literal")) or
 	self:varargs() or
 	self:func() or
 	self:tableconstructor() or
@@ -645,7 +664,7 @@ function Parser:fieldlist()
 end
 
 function Parser:field()
-	return self:acceptChain(function(_, n, _, _, e) return self:node("field", n, e) end, { "symbol", "[" }, { "literal" }, { "symbol", "]" }, { "assignop", "=" }, "exp") or
+	return self:acceptChain(function(_, n, _, _, e) return self:node("field", self:token2node(n), e) end, { "symbol", "[" }, { "literal" }, { "symbol", "]" }, { "assignop", "=" }, "exp") or
 	self:acceptChain(function(n, _, e) return self:node("field", n, e) end, "name", { "assignop", "=" }, "exp") or
 	self:acceptChain(function(e) return self:node("field", nil, e) end, "exp")
 end
