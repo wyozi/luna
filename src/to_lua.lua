@@ -138,6 +138,11 @@ function luaBuffer:nlUnindent()
 	self.indent = self.indent - 1
 end
 
+function luaBuffer:getTmpIndexAndIncrement()
+	self._tmpIndex = (self._tmpIndex or -1) + 1
+	return self._tmpIndex
+end
+
 -- Appends optional space. This might nop depending on the options 
 function luaBuffer:appendSpace(t)
 	if not self.noExtraSpace then
@@ -225,6 +230,18 @@ function luafier.internalToLua(node, opts, buf)
 		local destructor, target = node[1], node[2]
 		local names = destructor[1]
 
+		-- if target is not a simple identifier, create a tmp var for it
+		local varName
+ 		if target.type == "identifier" then
+			 varName = target.text
+		else
+			varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
+			buf:append("local "); buf:append(varName); buf:append("="); toLua(target); buf:append(";")
+		end
+
+		-- add assert to check we're not trying to destructure nil
+		buf:append("assert("); buf:append(varName); buf:append(", \"cannot destructure nil\");")
+
 		buf:append("local ")
 		for i,name in ipairs(names) do
 			if i > 1 then buf:append(", ") end
@@ -235,12 +252,12 @@ function luafier.internalToLua(node, opts, buf)
 		if destructor.type == "arraydestructor" then
 			for i = 1, #names do
 				if i > 1 then buf:append(", ") end
-				toLua(target); buf:append("["); buf:append(tostring(i)); buf:append("]")
+				buf:append(varName); buf:append("["); buf:append(tostring(i)); buf:append("]")
 			end
 		elseif destructor.type == "tabledestructor" then
 			for i,member in ipairs(names) do
 				if i > 1 then buf:append(", ") end
-				toLua(target); buf:append("."); toLua(member)
+				buf:append(varName); buf:append("."); toLua(member)
 			end
 		end
 
@@ -363,7 +380,7 @@ function luafier.internalToLua(node, opts, buf)
 	elseif node.type == "ifassign" then
 		-- Create a temporary variable name for the variable to be assigned before the if
 		local origAssignedVarName = node[1][1][1][1].text -- ohgod
-		local varName = "_ifa_" .. origAssignedVarName
+		local varName = "__ifa" .. buf:getTmpIndexAndIncrement() .. "_" .. origAssignedVarName
 
 		-- Set the assignment variable name to generated name
 		node[1][1][1][1].text = varName

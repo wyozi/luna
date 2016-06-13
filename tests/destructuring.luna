@@ -1,0 +1,20 @@
+local {src, targ} = {src = "earth", targ = "moon"}
+assert(src == "earth" and targ == "moon")
+
+local [f, s] = {4, 2}
+assert(f == 4 and s == 2)
+
+-- test that trying to destructure nil throws our error
+local _,msg = pcall(function()
+	local [f, s] = someNilVariable
+end)
+assert(msg:find("cannot destructure nil"))
+
+-- test that destructuring function is only called once
+local called = false
+local function fn()
+	if called then error("error! destructuring function called twice") end
+	called = true
+	return {}
+end
+local [f, s] = fn()
