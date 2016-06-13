@@ -1,0 +1,6 @@
+local t = {}
+t.child = { child1 = { name = "Mike" } }
+
+assert(t?.child?.child1?.name == "Mike")
+assert(t?.child?.child2?.name == nil)
+assert(t?.names?.a?.b == nil)

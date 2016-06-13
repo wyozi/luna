@@ -151,6 +151,17 @@ function obj:Callback(arg)
 end
 ```
 
+#### Safe indexing (implemented: ✔)
+
+```lua
+local x: table? = { item = "banana" }
+
+print(x?.item) -- prints "banana"
+
+x = nil
+print(x?.item) -- prints nil
+```
+
 #### Pattern matching (implemented: ✘)
 
 ```lua
@@ -169,15 +180,4 @@ Note: cannot create your own macros at the moment.
 ```lua
 local tbl = { "word", "mate" }
 local m = map!(tbl, (w) => w:upper())
-```
-
-#### Safe calls (implemented: ✘)
-
-```lua
-local x: table? = { item = "banana" }
-
-print(x?.item) -- prints "banana"
-
-x = nil
-print(x?.item) -- prints nil
 ```

@@ -401,7 +401,9 @@ function luafier.internalToLua(node, opts, buf)
 
 
 	toLua(node[1])
-	buf:append(".");toLua(node[2]) elseif node.type == "indexb" then 
+	buf:append(".");toLua(node[2]) elseif node.type == "indexsafe" then 
+	buf:append("(")
+	toLua(node[1])buf:append(" and ");toLua(node[1])buf:append(".");toLua(node[2])buf:append(")") elseif node.type == "indexb" then 
 	toLua(node[1])
 	buf:append("[");toLua(node[2])buf:append("]") elseif node.type == "tableconstructor" then 
 
