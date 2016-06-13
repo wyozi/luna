@@ -1,4 +1,4 @@
-local Lexer = {  }
+local __L_as,__L_t=assert,type;; local Lexer = {  }
 Lexer.__index = Lexer
 
 function Lexer.new(str)

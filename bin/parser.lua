@@ -1,4 +1,4 @@
-local unpack = unpack or table.unpack
+local __L_as,__L_t=assert,type;; local unpack = unpack or table.unpack
 local gettype = type
 
 local Parser = {  }
@@ -67,12 +67,12 @@ local node_meta = {  }
 node_meta.__index = node_meta
 
 function node_meta:cloneMeta(newType)
+	__L_as(__L_t(newType) == "string", "Parameter 'newType' must be a string")
 	return setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
 end
-
 function Parser:node(type, ...)
+	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")
 	local n = setmetatable({ type = type, line = (self.curToken) and (self.curToken.line), col = (self.curToken) and (self.curToken.col) }, node_meta)
-
 	local args = { ... }
 
 
@@ -88,24 +88,22 @@ function Parser:node(type, ...)
 	return n
 end
 function Parser:accept(type, text)
-	if self.nextToken and self.nextToken.type == type and (not text or self.nextToken.text == text) then 
-	return self:next() end
+	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string"); __L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string")
+	if self.nextToken and self.nextToken.type == type and (not text or self.nextToken.text == text) then ; return self:next() end
 end
 
 function Parser:expect(type, text)
-	assert(type(type) == "string", "Parameter 'type' must be a string"); assert(type(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string"); __L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
 	local n = self:accept(type, text)
 	if not n then return self:error("expected " .. type) end
 	return n
 end
 function Parser:checkEOF(text)
-	assert(type(text) == "string", "Parameter 'text' must be a string")
-	if not self:isEOF() then ; self:error(text) end
+	__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
+	if not self:isEOF() then return self:error(text) end
 end
-
 function Parser:acceptChain(fn, ...)
-	local rp = self:_createRestorePoint()
-
+	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function"); local rp = self:_createRestorePoint()
 	local line, col = (self.nextToken) and (self.nextToken.line), (self.nextToken) and (self.nextToken.col)
 
 	local t = {  }
@@ -370,20 +368,22 @@ function Parser:name()
 end
 
 function Parser:typedname()
-	local i = self:name()
-	if i then 
+	local __ifa0_i = self:name(); if __ifa0_i then ; local i = __ifa0_i
 	return self:node("typedname", i, self:type()) end
 end
 
 
 function Parser:type()
-	return self:acceptChain(function (_, name)
+	if self:accept("symbol", ":") then 
 
-		local isOptional = self:accept("symbol", "?")
-		return self:node("type", name, not not isOptional)
-	end, 
-	{ "symbol", ":" }, { "identifier" })
+	local n = self:accept("identifier") or self:accept("keyword", "function")
+	if not n then return  end
+
+	local isOptional = self:accept("symbol", "?")
+	return self:node("type", n, not not isOptional) end
 end
+
+
 function Parser:typednamelist()
 	local names = self:node("typednamelist")
 

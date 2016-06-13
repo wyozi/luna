@@ -1,5 +1,8 @@
-
+local __L_as,__L_t=assert,type;
 local luafier = {  }
+
+local LUAFN_ASSERT = "__L_as"
+local LUAFN_TYPE = "__L_t"
 
 function luafier.isNode(o)
 	return type(o) == "table" and not not o.type
@@ -75,17 +78,17 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 	for i, tc in pairs(typechecks) do
 
 		local tcnode = { type = "funccall", line = parlist.line }
-		tcnode[1] = { type = "identifier", text = "assert" }
+		tcnode[1] = { type = "identifier", text = LUAFN_ASSERT }
 		local args = { type = "explist" }
 		tcnode[2] = args
 
 		local typeChecker = {
 			type = "binop", "==", 
-			{ type = "funccall", { type = "identifier", text = "type" }, { type = "identifier", text = tc.var } }, 
+			{ type = "funccall", { type = "identifier", text = LUAFN_TYPE }, { type = "identifier", text = tc.var } }, 
 			{ type = "literal", text = "\"" .. tc.type .. "\"" }
 		}
 		if tc.nillable then 
-		local nilChecker = { type = "unop", "not", { type = "identifier", text = tc.var } }
+		local nilChecker = { type = "binop", "==", { type = "identifier", text = tc.var }, { type = "keyword", text = "nil" } }
 		args[1] = { type = "binop", "or", nilChecker, typeChecker } else 
 
 		args[1] = typeChecker end
@@ -240,8 +243,8 @@ function luafier.internalToLua(node, opts, buf)
 	buf:append(varName); buf:append("="); toLua(target); buf:append(";") end
 
 
-	buf:append("assert(")
-	buf:append(varName); buf:append(", \"cannot destructure nil\");")
+	buf:append(LUAFN_ASSERT)
+	buf:append("("); buf:append(varName); buf:append(", \"cannot destructure nil\");")
 	buf:append("local ")
 	for i, name in ipairs(names) do
 		if i > 1 then ; buf:append(", ") end
@@ -502,6 +505,10 @@ local defopts = {
 	nlString = "\n"
 }
 
+
+local lunaInclusions = [[local ]] .. LUAFN_ASSERT .. [[,]] .. LUAFN_TYPE .. [[=assert,type]]
+
+
 function luafier.toLua(node, useropts)
 	local opts = {  }
 
@@ -513,6 +520,8 @@ function luafier.toLua(node, useropts)
 	local bufIndentString = opts.prettyPrint and opts.indentString or ""
 
 	local buf = luaBuffer.new(bufIndentString, opts.nlString, not opts.prettyPrint)
+	buf:append(lunaInclusions)
+	buf:append(";")
 	luafier.internalToLua(node, opts, buf)
 	return buf:tostring()
 end

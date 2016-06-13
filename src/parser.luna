@@ -66,11 +66,11 @@ end
 local node_meta = {}
 node_meta.__index = node_meta
 
-function node_meta:cloneMeta(newType)
+function node_meta:cloneMeta(newType: string)
 	return setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
 end
 
-function Parser:node(type, ...)
+function Parser:node(type: string, ...)
 	local n = setmetatable({ type = type, line = (self.curToken) and (self.curToken.line), col = (self.curToken) and (self.curToken.col)}, node_meta)
 
 	local args = {...}
@@ -87,7 +87,7 @@ function Parser:node(type, ...)
 
 	return n
 end
-function Parser:accept(type, text)
+function Parser:accept(type: string, text: string?)
 	if self.nextToken and self.nextToken.type == type and (not text or self.nextToken.text == text) then
 		return self:next()
 	end
@@ -99,11 +99,9 @@ function Parser:expect(type: string, text: string)
 	return n
 end
 function Parser:checkEOF(text: string)
-	if not self:isEOF() then
-		self:error(text)
-	end
+	return self:error(text) if not self:isEOF()
 end
-function Parser:acceptChain(fn, ...)
+function Parser:acceptChain(fn: function, ...)
 	local rp = self:_createRestorePoint()
 
 	local line, col = (self.nextToken) and (self.nextToken.line), (self.nextToken) and (self.nextToken.col)
@@ -370,18 +368,20 @@ function Parser:name()
 end
 
 function Parser:typedname()
-	local i = self:name()
-	if i then
+	if local i = self:name() then
 		return self:node("typedname", i, self:type())
 	end
 end
 
 function Parser:type()
-	return
-		self:acceptChain(function(_, name)
-			local isOptional = self:accept("symbol", "?")
-			return self:node("type", name, not not isOptional)
-		end, {"symbol", ":"}, {"identifier"})
+	if self:accept("symbol", ":") then
+		-- function is an unfortunate keyword, but we want it to be valid type name; thus this hack
+		local n = self:accept("identifier") or self:accept("keyword", "function")
+		return if not n
+
+		local isOptional = self:accept("symbol", "?")
+		return self:node("type", n, not not isOptional)
+	end
 end
 
 function Parser:typednamelist()
