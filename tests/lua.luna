@@ -9,6 +9,7 @@
 ]]
 
 local literal = "hello world"
+local literalSing = 'i am single :('
 local literalEscaped = "hello \" quot world"
 local literalEscaped2 = "hello \" \\ \t \n quot world"
 local literalEscaped3 = "end \" backslashes \\"

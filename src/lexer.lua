@@ -92,8 +92,10 @@ end
 
 -- Reads a one line string
 function Lexer:_readOneLineString()
-	local start = self:_readPattern("^\"")
+	local start = self:_readPattern("^[\"\']")
 	if not start then return end
+
+	local strCharacter = start
 
 	local token = self:_createToken("literal")
 	token.pos = token.pos - 1
@@ -103,11 +105,11 @@ function Lexer:_readOneLineString()
 
 	while true do
 		-- find the first quotation within string
-		local send = self:_readPattern("^[^\"]*")
+		local send = self:_readPattern("^[^" .. strCharacter .. "]*")
 		table.insert(sbuf, send)
 
 		-- read the following quotation
-		local fquot = self:_readPattern("^\"")
+		local fquot = self:_readPattern("^" .. strCharacter)
 		if not fquot then self:error("unterminated string") end
 		table.insert(sbuf, fquot)
 
