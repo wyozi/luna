@@ -43,9 +43,9 @@ end
 
 
 function Parser:error(text)
+	__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
 	local line, col
-	if self.nextToken then 
-	line, col = self.nextToken.line, self.nextToken.col else 
+	if self.nextToken then ; line, col = self.nextToken.line, self.nextToken.col else 
 
 	line, col = -1, -1 end
 
@@ -59,10 +59,10 @@ function Parser:error(text)
 	error("[Luna Parser] " .. text .. " at line " .. line .. " col " .. col)
 end
 function Parser:expectedError(expected)
+	__L_as(__L_t(expected) == "string", "Parameter 'expected' must be a string")
 	local t = string.format("expected %s, got %s", expected, (self.nextToken and self.nextToken.type))
 	return self:error(t)
 end
-
 local node_meta = {  }
 node_meta.__index = node_meta
 
@@ -425,7 +425,7 @@ end
 
 function Parser:primaryexp()
 	local pref = self:prefixexp()
-	if not pref then ; return  end
+	if not pref then return  end
 
 	local n = pref
 
@@ -451,11 +451,9 @@ end
 
 function Parser:simpleexp()
 
-	local shortFn = self:acceptChain(function (_, p, _, _, b) ; return self:node("sfunc", p, b) end, 
+	local shortFn = self:acceptChain(function(_, p, _, _, b) return self:node("sfunc", p, b) end, 
 	{ "symbol", "(" }, "parlist", { "symbol", ")" }, { "symbol", "=>" }, "sfuncbody")
-	if shortFn then 
-	return shortFn end
-
+	if shortFn then return shortFn end
 
 	return self:accept("keyword", "nil") or
 	self:accept("keyword", "false") or
@@ -471,9 +469,7 @@ end
 
 function Parser:subexp()
 	local unop = self:accept("unop") or self:accept("binop", "-")
-	if unop then 
-	return self:node("unop", unop.text, self:subexp()) end
-
+	if unop then return self:node("unop", unop.text, self:subexp()) end
 
 	local e = self:simpleexp()
 
@@ -502,32 +498,29 @@ end
 
 function Parser:prefixexp()
 	return self:name() or
-	self:acceptChain(function (_, e, _) 
-	return self:node("parexp", e) end, { "symbol", "(" }, "exp", { "symbol", ")" })
+	self:acceptChain(function(_, e, _) return self:node("parexp", e) end, { "symbol", "(" }, "exp", { "symbol", ")" })
 end
+
 
 function Parser:args()
-	return self:acceptChain(function (_, el) 
-	return self:node("args", el) end, { "symbol", "(" }, "explist", { "symbol", ")" }) or
-	self:acceptChain(function (tbl) ; return self:node("args", self:node("explist", tbl)) end, "tableconstructor")
+	return self:acceptChain(function(_, el) return self:node("args", el) end, { "symbol", "(" }, "explist", { "symbol", ")" }) or
+	self:acceptChain(function(tbl) return self:node("args", self:node("explist", tbl)) end, "tableconstructor")
 end
+
 
 function Parser:func()
-	return self:acceptChain(function (_, f) 
-	return self:node("func", f) end, { "keyword", "function" }, "funcbody")
+	return self:acceptChain(function(_, f) return self:node("func", f) end, { "keyword", "function" }, "funcbody")
 end
+
 
 function Parser:funcbody()
-	return self:acceptChain(function (_, p, _, b) 
-	return self:node("funcbody", p, b) end, { "symbol", "(" }, "parlist", { "symbol", ")" }, "block")
+	return self:acceptChain(function(_, p, _, b) return self:node("funcbody", p, b) end, { "symbol", "(" }, "parlist", { "symbol", ")" }, "block")
 end
+
 
 function Parser:varargs()
-	local v = self:accept("symbol", "...")
-	if v then 
-	return self:node("varargs") end
+	if self:accept("symbol", "...") then return self:node("varargs") end
 end
-
 
 function Parser:parlist()
 	local names = self:node("parlist")
@@ -536,9 +529,11 @@ function Parser:parlist()
 		return self:typedname() or self:varargs()
 	end
 
-	local name = nextarg()
+	local __ifa1_name = nextarg(); if __ifa1_name then ; local name = __ifa1_name
+
+
 	local vargsAdded = false
-	if name then 
+
 	repeat 
 	if vargsAdded then 
 	error("Varargs must be the last element in a parameter list") end
@@ -562,9 +557,9 @@ function Parser:parlist()
 end
 
 function Parser:tableconstructor()
-	return self:acceptChain(function (_, fl) 
-	return self:node("tableconstructor", fl) end, { "symbol", "{" }, "fieldlist", { "symbol", "}" })
+	return self:acceptChain(function(_, fl) return self:node("tableconstructor", fl) end, { "symbol", "{" }, "fieldlist", { "symbol", "}" })
 end
+
 
 function Parser:fieldlist()
 	local fields = self:node("fieldlist")

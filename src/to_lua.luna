@@ -129,16 +129,16 @@ function luaBuffer:append(t)
 end
 function luaBuffer:nl()
 	self.buf[#self.buf + 1] = self.nlString
-	self.line = self.line + 1
+	self.line += 1
 	self.hasIndented = false
 end
 function luaBuffer:nlIndent()
 	self:nl()
-	self.indent = self.indent + 1
+	self.indent += 1
 end
 function luaBuffer:nlUnindent()
 	self:nl()
-	self.indent = self.indent - 1
+	self.indent -= 1
 end
 
 function luaBuffer:getTmpIndexAndIncrement()

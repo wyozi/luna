@@ -44,9 +44,9 @@ function Lexer:_readPattern(p, extra)
 	else
 		-- tabs count as 4 spaces
 		local tabCount = 0
-		for tab in txt:gmatch("\t") do tabCount = tabCount + 1 end
+		for tab in txt:gmatch("\t") do tabCount += 1 end
 		
-		self.col = self.col + #txt - tabCount + (tabCount * 4)
+		self.col += #txt - tabCount + (tabCount * 4)
 	end
 
 	return txt
@@ -104,8 +104,8 @@ function Lexer:_readOneLineString()
 	local strCharacter = start
 
 	local token = self:_createToken("literal")
-	token.pos = token.pos - 1
-	token.col = token.col - 1
+	token.pos -= 1
+	token.col -= 1
 
 	local sbuf = {start}
 
@@ -149,9 +149,7 @@ function Lexer:_readComment()
 	-- TODO store comment in somewhere
 
 	local start = self:_readPattern("^%-%-")
-	if not start then
-		return
-	end
+	return if not start
 
 	local c = self:_createToken("comment")
 
@@ -171,9 +169,7 @@ function Lexer:next()
 		self:_skipWhitespace()
 	until not self:_readComment()
 
-	if self.pos > #self.buf then
-		return nil -- EOF
-	end
+	return nil if self.pos > #self.buf -- EOF
 
 	return
 		self:_readString() or

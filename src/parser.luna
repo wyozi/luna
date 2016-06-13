@@ -42,7 +42,7 @@ function Parser:_createRestorePoint()
 	end
 end
 
-function Parser:error(text)
+function Parser:error(text: string)
 	local line, col
 	if self.nextToken then
 		line, col = self.nextToken.line, self.nextToken.col
@@ -58,7 +58,7 @@ function Parser:error(text)
 
 	error("[Luna Parser] " .. text .. " at line " .. line .. " col " .. col)
 end
-function Parser:expectedError(expected)
+function Parser:expectedError(expected: string)
 	local t = string.format("expected %s, got %s", expected, (self.nextToken and self.nextToken.type))
 	return self:error(t)
 end
@@ -425,7 +425,7 @@ end
 
 function Parser:primaryexp()
 	local pref = self:prefixexp()
-	if not pref then return end
+	return if not pref
 
 	local n = pref
 
@@ -451,11 +451,9 @@ end
 
 function Parser:simpleexp()
 	-- check if it's a short function
-	local shortFn = self:acceptChain(function(_,p,_,_,b) return self:node("sfunc", p, b) end,
+	local shortFn = self:acceptChain((_,p,_,_,b) => self:node("sfunc", p, b),
 		{"symbol", "("}, "parlist", {"symbol", ")"}, {"symbol", "=>"}, "sfuncbody")
-	if shortFn then
-		return shortFn
-	end
+	return shortFn if shortFn
 
 	return
 		self:accept("keyword", "nil") or
@@ -471,9 +469,7 @@ end
 
 function Parser:subexp()
 	local unop = self:accept("unop") or self:accept("binop", "-")
-	if unop then
-		return self:node("unop", unop.text, self:subexp())
-	end
+	return self:node("unop", unop.text, self:subexp()) if unop
 
 	local e = self:simpleexp()
 
@@ -503,30 +499,27 @@ end
 function Parser:prefixexp()
 	return
 		self:name() or
-		self:acceptChain(function(_,e,_) return self:node("parexp", e) end, {"symbol", "("}, "exp", {"symbol", ")"})
+		self:acceptChain((_,e,_) => self:node("parexp", e), {"symbol", "("}, "exp", {"symbol", ")"})
 end
 
 function Parser:args()
 	return
-		self:acceptChain(function(_,el) return self:node("args", el) end, {"symbol", "("}, "explist", {"symbol", ")"}) or
-		self:acceptChain(function(tbl) return self:node("args", self:node("explist", tbl)) end, "tableconstructor")
+		self:acceptChain((_,el) => self:node("args", el), {"symbol", "("}, "explist", {"symbol", ")"}) or
+		self:acceptChain((tbl) => self:node("args", self:node("explist", tbl)), "tableconstructor")
 end
 
 function Parser:func()
 	return
-		self:acceptChain(function(_, f) return self:node("func", f) end, {"keyword", "function"}, "funcbody")
+		self:acceptChain((_, f) => self:node("func", f), {"keyword", "function"}, "funcbody")
 end
 
 function Parser:funcbody()
 	return
-		self:acceptChain(function(_, p, _, b) return self:node("funcbody", p, b) end, {"symbol", "("}, "parlist", {"symbol", ")"}, "block")
+		self:acceptChain((_, p, _, b) => self:node("funcbody", p, b), {"symbol", "("}, "parlist", {"symbol", ")"}, "block")
 end
 
 function Parser:varargs()
-	local v = self:accept("symbol", "...")
-	if v then
-		return self:node("varargs")
-	end
+	return self:node("varargs") if self:accept("symbol", "...")
 end
 
 function Parser:parlist()
@@ -536,9 +529,11 @@ function Parser:parlist()
 		return self:typedname() or self:varargs()
 	end
 
-	local name = nextarg()
-	local vargsAdded = false
-	if name then
+	if local name = nextarg() then
+
+		-- has varargs been added to parlist
+		local vargsAdded = false
+
 		repeat
 			if vargsAdded then
 				error("Varargs must be the last element in a parameter list")
@@ -563,7 +558,7 @@ end
 
 function Parser:tableconstructor()
 	return
-		self:acceptChain(function(_,fl) return self:node("tableconstructor", fl) end, {"symbol", "{"}, "fieldlist", {"symbol", "}"})
+		self:acceptChain((_,fl) => self:node("tableconstructor", fl), {"symbol", "{"}, "fieldlist", {"symbol", "}"})
 end
 
 function Parser:fieldlist()
