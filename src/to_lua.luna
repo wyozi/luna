@@ -537,7 +537,8 @@ local defopts = {
 
 -- The code that is added as first thing in all Luafied files
 local lunaInclusions = 
-[[local ]] .. LUAFN_ASSERT .. [[,]] .. LUAFN_TYPE .. [[=assert,type]]
+[[local ]] .. LUAFN_ASSERT .. [[,__L_to,__L_gmt=assert,type,getmetatable;]] ..
+[[local function ]] .. LUAFN_TYPE .. [[(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end]]
 
 function luafier.toLua(node, useropts)
 	local opts = {}

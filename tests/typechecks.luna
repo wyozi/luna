@@ -1,0 +1,13 @@
+
+local function fn(a: string, b: number?)end
+
+fn("hello")
+fn("hello", 42)
+
+local customtype = {}
+customtype.__type = "custom"
+
+local function fn2(a: custom)end
+
+local node = setmetatable({}, customtype)
+fn2(node)

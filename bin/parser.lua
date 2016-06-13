@@ -1,4 +1,4 @@
-local __L_as,__L_t=assert,type;; local unpack = unpack or table.unpack
+local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end;; local unpack = unpack or table.unpack
 local gettype = type
 
 local Parser = {  }
@@ -170,8 +170,8 @@ function chain_meta:expect(a, b)
 	return self:insertToken(true, a, b)
 end
 function chain_meta:done(fn)
+	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
 	local parser = self.parser
-
 	local rp = parser:_createRestorePoint()
 	local line, col = (parser.nextToken) and (parser.nextToken.line), (parser.nextToken) and (parser.nextToken.col)
 

@@ -169,7 +169,7 @@ function chain_meta:expect(a, b)
 	return self:insertToken(true, a, b)
 end
 
-function chain_meta:done(fn)
+function chain_meta:done(fn: function)
 	local parser = self.parser
 	
 	local rp = parser:_createRestorePoint()

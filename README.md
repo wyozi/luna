@@ -52,7 +52,10 @@ fn2(25)
 
 #### Type signatures (implemented: ✔)
 
-Note: can be used in eg. local variables, but at the moment do not do anything there.
+Internally uses the Lua `type` function to check for types.
+If you have a custom table type, you can add `__type` field to its metatable, and it'll work with Luna's type system.
+
+Note: at the moment the type checking is only done for function parameters.
 
 ```lua
 function fn(a: string, b: number?)end
