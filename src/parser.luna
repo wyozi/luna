@@ -101,6 +101,8 @@ end
 function Parser:checkEOF(text: string)
 	return self:error(text) if not self:isEOF()
 end
+
+
 function Parser:acceptChain(fn: function, ...)
 	local rp = self:_createRestorePoint()
 
@@ -145,6 +147,67 @@ function Parser:acceptChain(fn: function, ...)
 	end
 
 	return unpack(ret)
+end
+
+local chain_meta = {}
+chain_meta.__index = chain_meta
+
+function chain_meta:insertParserFn(expected: boolean, fn: function, name: string?)
+	table.insert(self.chain, { name = name or "unknown", expected = expected, fn = fn })
+	return self
+end
+function chain_meta:insertToken(expected: boolean, type: string, text: string?)
+	table.insert(self.chain, { name = type, expected = expected, fn = () => self.parser:accept(type, text) })
+	return self
+end
+function chain_meta:accept(a, b)
+	return self:insertParserFn(false, a, b) if type(a) == "function"
+	return self:insertToken(false, a, b)
+end
+function chain_meta:expect(a, b)
+	return self:insertParserFn(true, a, b) if type(a) == "function"
+	return self:insertToken(true, a, b)
+end
+
+function chain_meta:done(fn)
+	local parser = self.parser
+	
+	local rp = parser:_createRestorePoint()
+	local line, col = (parser.nextToken) and (parser.nextToken.line), (parser.nextToken) and (parser.nextToken.col)
+	
+	local t = {}
+	for i, ch in ipairs(self.chain) do
+		local {name, expected, fn} = ch
+		local parsed = fn()
+
+		-- could not parse given chain part; restore
+		if not parsed then
+			if expected then
+				parser:expectedError(name)
+			end
+
+			rp()
+			return
+		end
+
+		t[i] = parsed
+	end
+
+	local ret = {fn(unpack(t))}
+
+	-- if chain results into a node, it should obviously be positioned at beginning of chain, which is done here
+	if ret[1] and type(ret[1]) == "table" and ret[1].type then
+		ret[1].line = line
+		ret[1].col = col
+	end
+
+	return unpack(ret)
+end
+
+-- Creates a new chain
+-- Chains are parser combinators of Luna parser and allow checking for a chain of nodes/tokens
+function Parser:chain(name: string)
+	return setmetatable({name = name, parser = self, chain = {}}, chain_meta)
 end
 
 function Parser:block()
@@ -451,8 +514,10 @@ end
 
 function Parser:simpleexp()
 	-- check if it's a short function
-	local shortFn = self:acceptChain((_,p,_,_,b) => self:node("sfunc", p, b),
-		{"symbol", "("}, "parlist", {"symbol", ")"}, {"symbol", "=>"}, "sfuncbody")
+	local shortFn = self:chain("shortfunc")
+		:accept("symbol", "("):accept(self::parlist, "parameters"):accept("symbol", ")"):accept("symbol", "=>")
+		:expect(self::sfuncbody, "function body")
+		:done((_,p,_,_,b) => self:node("sfunc", p, b))
 	return shortFn if shortFn
 
 	return

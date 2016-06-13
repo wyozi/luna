@@ -102,8 +102,10 @@ function Parser:checkEOF(text)
 	__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
 	if not self:isEOF() then return self:error(text) end
 end
+
 function Parser:acceptChain(fn, ...)
-	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function"); local rp = self:_createRestorePoint()
+	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
+	local rp = self:_createRestorePoint()
 	local line, col = (self.nextToken) and (self.nextToken.line), (self.nextToken) and (self.nextToken.col)
 
 	local t = {  }
@@ -147,6 +149,67 @@ function Parser:acceptChain(fn, ...)
 	return unpack(ret)
 end
 
+local chain_meta = {  }
+chain_meta.__index = chain_meta
+
+function chain_meta:insertParserFn(expected, fn, name)
+	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean"); __L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function"); __L_as(name == nil or __L_t(name) == "string", "Parameter 'name' must be a string")
+	table.insert(self.chain, { name = name or "unknown", expected = expected, fn = fn })
+	return self
+end
+function chain_meta:insertToken(expected, type, text)
+	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean"); __L_as(__L_t(type) == "string", "Parameter 'type' must be a string"); __L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string"); table.insert(self.chain, { name = type, expected = expected, fn = function() return self.parser:accept(type, text) end })
+	return self
+end
+function chain_meta:accept(a, b)
+	if type(a) == "function" then return self:insertParserFn(false, a, b) end
+	return self:insertToken(false, a, b)
+end
+function chain_meta:expect(a, b)
+	if type(a) == "function" then return self:insertParserFn(true, a, b) end
+	return self:insertToken(true, a, b)
+end
+function chain_meta:done(fn)
+	local parser = self.parser
+
+	local rp = parser:_createRestorePoint()
+	local line, col = (parser.nextToken) and (parser.nextToken.line), (parser.nextToken) and (parser.nextToken.col)
+
+	local t = {  }
+	for i, ch in ipairs(self.chain) do
+		__L_as(ch, "cannot destructure nil");local name, expected, fn = ch.name, ch.expected, ch.fn
+		local parsed = fn()
+
+
+		if not parsed then 
+		if expected then 
+		parser:expectedError(name) end
+
+
+		rp()
+		return  end
+
+
+		t[i] = parsed
+	end
+
+	local ret = { fn(unpack(t)) }
+
+
+	if ret[1] and type(ret[1]) == "table" and ret[1].type then 
+	ret[1].line = line
+	ret[1].col = col end
+
+
+	return unpack(ret)
+end
+
+
+
+function Parser:chain(name)
+	__L_as(__L_t(name) == "string", "Parameter 'name' must be a string")
+	return setmetatable({ name = name, parser = self, chain = {  } }, chain_meta)
+end
 function Parser:block()
 	local block = self:node("block")
 
@@ -451,8 +514,10 @@ end
 
 function Parser:simpleexp()
 
-	local shortFn = self:acceptChain(function(_, p, _, _, b) return self:node("sfunc", p, b) end, 
-	{ "symbol", "(" }, "parlist", { "symbol", ")" }, { "symbol", "=>" }, "sfuncbody")
+	local shortFn = self:chain("shortfunc"):accept("symbol", "("):accept((function(...) return self:parlist(...) end), "parameters"):accept("symbol", ")"):accept("symbol", "=>"):expect((function(...) return self:sfuncbody(...) end), "function body"):done(function(_, p, _, _, b) return self:node("sfunc", p, b) end)
+
+
+
 	if shortFn then return shortFn end
 
 	return self:accept("keyword", "nil") or
