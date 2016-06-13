@@ -5,3 +5,9 @@ end
 assert(f1(42) == "ok")
 assert(f1("s") == "fail")
 assert(f1() == "fail")
+
+local sf1 = (x) => do
+	return x if type(x) == "number"
+end
+assert(sf1("hey") == nil)
+assert(sf1(12) == 12)
