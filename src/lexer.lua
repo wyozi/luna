@@ -208,6 +208,9 @@ function Lexer:next()
 		self:_readToken("unop", "^%~") or
 
 		self:_readIdentifierOrKeyword() or
+
+		self:_readToken("number", "^0x[%dabcdefABCDEF]+") or
+		self:_readToken("number", "^[%d]+e[%d]+") or
 		self:_readToken("number", "^[%d%.]+") or
 
 		self:error("invalid token " .. self.buf:sub(self.pos, self.pos))

@@ -14,6 +14,12 @@ local literalEscaped = "hello \" quot world"
 local literalEscaped2 = "hello \" \\ \t \n quot world"
 local literalEscaped3 = "end \" backslashes \\"
 
+local tNil = nil
+local tNum = 12
+local tNum2 = 12.543
+local tNum3 = 1e8
+local tNum4 = 0xff3a
+
 local block = [[dis a block]]
 local block2 = [[this is a free "quotation" zone]]
 local block3 = [[i also support ]] .. [[ concatenations]]
