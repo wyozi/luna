@@ -1,4 +1,5 @@
--- Tests vanilla lua code
+-- Tests vanilla lua syntax, validity of parsing is not tested
+-- Note: this code is ran, don't infintie while loop here or something
 
 -- comment
 
@@ -23,20 +24,27 @@ local tNum4 = 0xff3a
 local block = [[dis a block]]
 local block2 = [[this is a free "quotation" zone]]
 local block3 = [[i also support ]] .. [[ concatenations]]
-assert(block == "dis a block")
-assert(block2 == "this is a free \"quotation\" zone")
-assert(block3 == "i also support  concatenations")
 
 local a, b = 4, 2
 assert(a == 4)
 assert(b == 2)
 
+local num, gee = 2, {"12"}
+if num >= 30 then
+	num = 3
+elseif s ~= "s" and #gee == 0 or not z then
+	num = 4
+else
+	num = 5
+end
+
+local smth = true
+while smth == true do
+	smth = false
+end
+
 local function lfunc(a, b)
 	b = a + 3 * b
 	return b, a
 end
-local f, s = lfunc(2, 8)
-assert(f == 26 and s == 2)
-
 local lfunc2 = function(...) return ... end
-assert(lfunc2("a") == "a")

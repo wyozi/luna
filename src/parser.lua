@@ -49,6 +49,13 @@ function Parser:error(text)
 	else
 		line, col = -1, -1
 	end
+
+	text = text .. " preceding tokens: "
+	for i=2,0,-1 do
+		local t = self.tokens[#self.tokens - i]
+		if t then text = text .. " [" .. t.type .. ":" .. t.text .. "]" end
+	end
+
 	error("[Luna Parser] " .. text .. " at line " .. line .. " col " .. col)
 end
 function Parser:expectedError(expected)
@@ -130,15 +137,15 @@ function Parser:acceptChain(fn, ...)
 		t[i] = parsed
 	end
 
-	local ret = fn(unpack(t))
+	local ret = {fn(unpack(t))}
 
 	-- if chain results into a node, it should obviously be positioned at beginning of chain, which is done here
-	if ret and type(ret) == "table" and ret.type then
-		ret.line = line
-		ret.col = col
+	if ret[1] and type(ret[1]) == "table" and ret[1].type then
+		ret[1].line = line
+		ret[1].col = col
 	end
 
-	return ret
+	return unpack(ret)
 end
 
 function Parser:block()
@@ -173,11 +180,6 @@ function Parser:block()
 
 	if not finished and not self:isEOF() then
 		local post = "got " .. (self.nextToken and (self.nextToken.type .. " " .. self.nextToken.text)) .. " "
-		post = post .. " preceding tokens: "
-		for i=2,0,-1 do
-			local t = self.tokens[#self.tokens - i]
-			if t then post = post .. " [" .. t.type .. ":" .. t.text .. "]" end
-		end
 		self:error("expected statement; " .. post)
 	end
 
@@ -235,7 +237,7 @@ function Parser:stat_if()
 	function _elseif()
 		local cond, b =
 			self:acceptChain(function(e,_,b) return e, b end, "exp", {"keyword", "then"}, "block")
-		if not b then self:error("expected elseif cond/block") end
+		if not b then self:error("expected elseif condition or block") end
 
 		local node = self:node("elseif", cond, b)
 		cont(b, node)
