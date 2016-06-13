@@ -46,7 +46,7 @@ local fn2 = (age) => do
 	print("You are " .. age .. " years old")
 end
 
-print(fn("Mike"))
+print(fn1("Mike"))
 fn2(25)
 ```
 
