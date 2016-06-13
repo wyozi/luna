@@ -1,9 +1,37 @@
 
 local luafier = {}
 
+-- Gets the linenumber difference between these two nodes
+-- Returns nil if it cannot/shouldn't be derived from these nodes
+function luafier.getLinenoDiff(node1, node2)
+	local line1, line2
+
+	if type(node1) == "number" then
+		line1 = node1
+	else
+		line1 = node1.line
+	end
+
+	line2 = node2.line
+
+	if not line1 or not line2 then
+		return nil
+	end
+
+	return line2 - line1
+end
+
 function luafier.listToLua(list, opts, buf)
+	local lastnode
 	for i,snode in ipairs(list) do
 		if i > 1 then buf:append(", ") end
+
+		local lndiff = opts.matchLinenumbers and luafier.getLinenoDiff(lastnode or list, snode)
+		lastnode = snode
+		if lndiff and lndiff > 0 then
+			for i=1, lndiff do buf:nl() end
+		end
+
 		luafier.internalToLua(snode, opts, buf)
 	end
 end
@@ -106,22 +134,31 @@ function luafier.internalToLua(node, opts, buf)
 	-- Gets the linenumber difference between these two nodes
 	-- Returns nil if it cannot/shouldn't be derived from these nodes
 	local function getLinenoDiff(node1, node2)
-		local line1, line2
-
-		if type(node1) == "number" then
-			line1 = node1
-		else
-			line1 = node1.line
-		end
-
-		line2 = node2.line
-
-		if not line1 or not line2 then
-			return nil
-		end
-
 		if opts.matchLinenumbers then
-			return line2 - line1
+			return luafier.getLinenoDiff(node1, node2)
+		end
+	end
+
+	-- Adds indentation+nl/spaces around given block based on options
+	-- n1 is preceding node
+	-- n2 is the block node
+	-- fn is the function that adds internal contents
+	local function wrapIndent(n1, n2, fn)
+		local lndiff = getLinenoDiff(n1, n2)
+		local addNl = (lndiff and lndiff > 0) or opts.prettyPrint
+
+		if addNl then
+			buf:nlIndent()
+		else
+			buf:appendSpace(" ")
+		end
+
+		fn()
+
+		if addNl then
+			buf:nlUnindent()
+		else
+			buf:append(" ")
 		end
 	end
 
@@ -205,22 +242,20 @@ function luafier.internalToLua(node, opts, buf)
 		buf:append("function ")
 		toLua(node[1])
 
-	elseif node.type == "sfunc" then
+	elseif node.type == "sfunc" or node.type == "funcbody" then
 		local pl, fb = luafier.processParListFuncBlock(node[1], node[2])
-		buf:append("function(")
-		listToLua(pl)
-		buf:append(") ")
-		toLua(fb)
-		buf:append(" end")
 
-	elseif node.type == "funcbody" then
-		local pl, fb = luafier.processParListFuncBlock(node[1], node[2])
-		buf:append("(")
+		if node.type == "sfunc" then
+			buf:append("function(")
+		else
+			buf:append("(")
+		end
 		listToLua(pl)
-		buf:append(") ")
-		toLua(fb)
-		buf:append(" end")
+		buf:append(")")
 
+		wrapIndent(pl, fb, function() toLua(fb) end)
+
+		buf:append("end")
 	elseif node.type == "assignment" then
 		local op = node[1]
 
@@ -262,7 +297,11 @@ function luafier.internalToLua(node, opts, buf)
 		toLua(node[1]); buf:append("."); toLua(node[2])
 
 	elseif node.type == "tableconstructor" then
-		buf:append("{"); toLua(node[1]); buf:append("}")
+		buf:append("{");
+
+		wrapIndent(node, node[1], function() toLua(node[1]) end)
+		
+		buf:append("}")
 		
 	elseif node.type == "field" then
 		local key, val = node[1], node[2]
@@ -272,16 +311,6 @@ function luafier.internalToLua(node, opts, buf)
 			toLua(val)
 		end
 
-	elseif node.type == "if" then
-		buf:append("if "); toLua(node[1]); buf:append(" then");
-		buf:nlIndent()
-		toLua(node[2]);
-		buf:nlUnindent()
-		if node[3] then
-			toLua(node[3])
-		else
-			buf:append("end")
-		end
 	elseif node.type == "ifassign" then
 		-- Create a temporary variable name for the variable to be assigned before the if
 		local origAssignedVarName = node[1][1][1][1].text -- ohgod
@@ -299,23 +328,31 @@ function luafier.internalToLua(node, opts, buf)
 		table.insert(checkerIf[2], 1, restoreBinding)
 
 		toLua(node[1]); buf:append("; ") toLua(checkerIf)
-	elseif node.type == "elseif" then
-		buf:append("elseif "); toLua(node[1]); buf:append(" then"); buf:nlIndent()
-		toLua(node[2]); buf:nlUnindent()
+
+	elseif node.type == "if" or node.type == "elseif" then
+		buf:append(node.type); buf:append(" "); toLua(node[1]); buf:append(" then");
+		
+		wrapIndent(node, node[2], function()
+			toLua(node[2])
+		end)
+
 		if node[3] then
 			toLua(node[3])
 		else
 			buf:append("end")
 		end
 	elseif node.type == "else" then
-		buf:append("else"); buf:nlIndent()
-		toLua(node[1]); buf:nlUnindent()
+		buf:append("else");
+		wrapIndent(node, node[1], function()
+			toLua(node[1])
+		end)
 		buf:append("end")
 
 	elseif node.type == "while" then
-		buf:append("while "); toLua(node[1]); buf:append(" do "); buf:nlIndent()
-		toLua(node[2])
-		buf:nlUnindent()
+		buf:append("while "); toLua(node[1]); buf:append(" do");
+		wrapIndent(node, node[2], function()
+			toLua(node[2])
+		end)
 		buf:append("end")
 
 	elseif node.type == "fornum" then
@@ -337,8 +374,18 @@ function luafier.internalToLua(node, opts, buf)
 		buf:append("end")
 
 	elseif node.type == "binop" then
-		toLua(node[2]); buf:appendSpace(" "); buf:append(node[1]); buf:appendSpace(" "); toLua(node[3])
+		toLua(node[2]); buf:appendSpace(" "); buf:append(node[1]);
 		
+		local lndiff = getLinenoDiff(node[2], node[3])
+		local addNl = (lndiff and lndiff > 0)
+
+		if addNl then
+			buf:nl()
+		else
+			buf:appendSpace(" ")
+		end
+		toLua(node[3])
+
 	elseif node.type == "unop" then
 		buf:append(node[1])
 		if node[1] == "not" then
@@ -382,7 +429,9 @@ function luafier.toLua(node, useropts)
 		for k,v in pairs(useropts) do opts[k] = v end
 	end
 
-	local buf = luaBuffer.new(opts.indentString, opts.nlString, not opts.prettyPrint)
+	local bufIndentString = opts.prettyPrint and opts.indentString or ""
+
+	local buf = luaBuffer.new(bufIndentString, opts.nlString, not opts.prettyPrint)
 	luafier.internalToLua(node, opts, buf)
 	return buf:tostring()
 end

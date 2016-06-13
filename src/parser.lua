@@ -91,6 +91,8 @@ end
 function Parser:acceptChain(fn, ...)
 	local rp = self:_createRestorePoint()
 
+	local line, col = (self.curToken) and (self.curToken.line), (self.curToken) and (self.curToken.col)
+
 	local t = {}
 	for i,node in pairs{...} do
 		local parsed
@@ -121,7 +123,15 @@ function Parser:acceptChain(fn, ...)
 		t[i] = parsed
 	end
 
-	return fn(unpack(t))
+	local ret = fn(unpack(t))
+
+	-- if chain results into a node, it should obviously be positioned at beginning of chain, which is done here
+	if ret and type(ret) == "table" and ret.type then
+		ret.line = line
+		ret.col = col
+	end
+
+	return ret
 end
 
 function Parser:block()
