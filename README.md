@@ -140,6 +140,17 @@ local tbl = { "word", "mate" }
 local m = map!(tbl, (w) => w:upper())
 ```
 
+#### Safe calls (implemented: ✘)
+
+```lua
+local x: table? = { item = "banana" }
+
+print(x?.item) -- prints "banana"
+
+x = nil
+print(x?.item) -- prints nil
+```
+
 #### Method references (implemented: ✘)
 
 ```lua

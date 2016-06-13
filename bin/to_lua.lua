@@ -329,9 +329,9 @@ function luafier.internalToLua(node, opts, buf)
 
 
 	buf:append("return")
-	if node[1] then 
+	local __ifa0_stat = node[1]; if __ifa0_stat then ; local stat = __ifa0_stat
 	buf:append(" ")
-	toLua(node[1]) end elseif node.type == "returnif" then 
+	toLua(stat) end elseif node.type == "returnif" then 
 
 
 

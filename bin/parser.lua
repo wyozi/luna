@@ -36,11 +36,11 @@ end
 
 function Parser:_createRestorePoint()
 	local point = self.tokenIndex
-	return function ()
-		self.tokenIndex = point - 1
-		self:next()
-	end
+	return function() 
+	self.tokenIndex = point - 1
+	self:next() end
 end
+
 
 function Parser:error(text)
 	local line, col
@@ -93,13 +93,14 @@ function Parser:accept(type, text)
 end
 
 function Parser:expect(type, text)
+	assert(type(type) == "string", "Parameter 'type' must be a string"); assert(type(text) == "string", "Parameter 'text' must be a string")
 	local n = self:accept(type, text)
-	if not n then ; self:error("expected " .. type) end
+	if not n then return self:error("expected " .. type) end
 	return n
 end
 function Parser:checkEOF(text)
-	if not self:isEOF() then 
-	self:error(text) end
+	assert(type(text) == "string", "Parameter 'text' must be a string")
+	if not self:isEOF() then ; self:error(text) end
 end
 
 function Parser:acceptChain(fn, ...)
@@ -519,8 +520,7 @@ function Parser:parlist()
 	local names = self:node("parlist")
 
 	local function nextarg()
-		local a = self:typedname() or self:varargs()
-		if a then ; return a end
+		return self:typedname() or self:varargs()
 	end
 
 	local name = nextarg()
@@ -570,11 +570,11 @@ function Parser:fieldlist()
 end
 
 function Parser:field()
-	return self:acceptChain(function (_, n, _, _, e) 
-	return self:node("field", n, e) end, { "symbol", "[" }, { "literal" }, { "symbol", "]" }, { "assignop", "=" }, "exp") or
-	self:acceptChain(function (n, _, e) ; return self:node("field", n, e) end, "name", { "assignop", "=" }, "exp") or
-	self:acceptChain(function (e) ; return self:node("field", nil, e) end, "exp")
+	return self:acceptChain(function(_, n, _, _, e) return self:node("field", n, e) end, { "symbol", "[" }, { "literal" }, { "symbol", "]" }, { "assignop", "=" }, "exp") or
+	self:acceptChain(function(n, _, e) return self:node("field", n, e) end, "name", { "assignop", "=" }, "exp") or
+	self:acceptChain(function(e) return self:node("field", nil, e) end, "exp")
 end
+
 function Parser:fieldsep()
 	return self:accept("symbol", ",") or self:accept("symbol", ";")
 end
@@ -582,9 +582,9 @@ end
 
 
 function Parser:sfuncbody()
-	return self:acceptChain(function (_, b) 
-	return b end, { "keyword", "do" }, "block") or
-	self:acceptChain(function (e) ; return self:node("return", e) end, "exp")
+	return self:acceptChain(function(_, b) return b end, { "keyword", "do" }, "block") or
+	self:acceptChain(function(e) return self:node("return", e) end, "exp")
 end
+
 
 return Parser
