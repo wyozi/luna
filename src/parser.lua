@@ -457,9 +457,9 @@ function Parser:simpleexp()
 	end
 
 	return
-		self:accept("identifier", "nil") or
-		self:accept("identifier", "false") or
-		self:accept("identifier", "true") or
+		self:accept("keyword", "nil") or
+		self:accept("keyword", "false") or
+		self:accept("keyword", "true") or
 		self:accept("number") or
 		self:accept("literal") or
 		self:varargs() or
