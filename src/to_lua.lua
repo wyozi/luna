@@ -48,8 +48,16 @@ end
 local luaBuffer = {}
 luaBuffer.__index = luaBuffer
 
-function luaBuffer.new(indentString)
-	return setmetatable({buf = {}, indent = 0, indentString = indentString or "\t", line = 1}, luaBuffer)
+function luaBuffer.new(indentString, nlString, noExtraSpace)
+	return setmetatable({
+		buf = {},
+		indent = 0,
+		indentString = indentString,
+		nlString = nlString,
+		noExtraSpace = noExtraSpace,
+
+		line = 1
+	}, luaBuffer)
 end
 function luaBuffer:appendln(t)
 	self:append(t)
@@ -63,7 +71,7 @@ function luaBuffer:append(t)
 	self.buf[#self.buf + 1] = t
 end
 function luaBuffer:nl()
-	self.buf[#self.buf + 1] = "\n"
+	self.buf[#self.buf + 1] = self.nlString
 	self.line = self.line + 1
 	self.hasIndented = false
 end
@@ -75,6 +83,14 @@ function luaBuffer:nlUnindent()
 	self:nl()
 	self.indent = self.indent - 1
 end
+
+-- Appends optional space. This might nop depending on the options 
+function luaBuffer:appendSpace(t)
+	if not self.noExtraSpace then
+		self:append(t)
+	end
+end
+
 function luaBuffer:tostring()
 	return table.concat(self.buf, "")
 end
@@ -87,18 +103,41 @@ function luafier.internalToLua(node, opts, buf)
 		luafier.listToLua(lnode, opts, buf)
 	end
 
+	-- Gets the linenumber difference between these two nodes
+	-- Returns nil if it cannot/shouldn't be derived from these nodes
+	local function getLinenoDiff(node1, node2)
+		local line1, line2
+
+		if type(node1) == "number" then
+			line1 = node1
+		else
+			line1 = node1.line
+		end
+
+		line2 = node2.line
+
+		if not line1 or not line2 then
+			return nil
+		end
+
+		if opts.matchLinenumbers then
+			return line2 - line1
+		end
+	end
+
 	if node.type == "block" then
 		for i,snode in ipairs(node) do
-			local targLine = snode.line
-			local curLine = buf.line
 
-			if targLine and targLine > curLine then
-				-- add some nls to reach targLine if needed
-				for _ = 1, (targLine - curLine) do
-					buf:nl()
+			local lndiff = getLinenoDiff(buf.line, snode)
+			if lndiff then
+				if lndiff > 0 then
+					for i=1,lndiff do buf:nl() end
+				elseif lndiff == 0 then
+					-- add newlines before all except first node if we're not ahead of ourselves
+					if i > 1 then buf:nl() end
 				end
-			elseif not targLine or targLine < curLine then
-				-- add newlines before all except first node if we're not ahead of ourselves
+			elseif opts.prettyPrint then
+				-- add newlines before all except first node if we're prettyprinting
 				if i > 1 then buf:nl() end
 			end
 
@@ -210,7 +249,11 @@ function luafier.internalToLua(node, opts, buf)
 		toLua(node[1])
 
 	elseif node.type == "return" then
-		buf:append("return "); toLua(node[1])
+		buf:append("return")
+		if node[1] then
+			buf:append(" ")
+			toLua(node[1])
+		end
 
 	elseif node.type == "break" then
 		buf:append("break")
@@ -277,8 +320,11 @@ function luafier.internalToLua(node, opts, buf)
 
 	elseif node.type == "fornum" then
 		local var, low, high, step, b = node[1], node[2], node[3], node[4], node[5]
-		buf:append("for "); toLua(var); buf:append(" = "); toLua(low); buf:append(", "); toLua(high)
-		if step then buf:append(", "); toLua(step) end
+		buf:append("for "); toLua(var); buf:appendSpace(" "); buf:append("="); buf:appendSpace(" "); toLua(low); buf:append(","); buf:appendSpace(" "); toLua(high)
+		if step then
+			buf:append(","); buf:appendSpace(" ")
+			toLua(step)
+		end
 		buf:append(" do"); buf:nlIndent()
 		toLua(b)
 		buf:nlUnindent()
@@ -291,10 +337,14 @@ function luafier.internalToLua(node, opts, buf)
 		buf:append("end")
 
 	elseif node.type == "binop" then
-		toLua(node[2]); buf:append(" "); buf:append(node[1]); buf:append(" "); toLua(node[3])
+		toLua(node[2]); buf:appendSpace(" "); buf:append(node[1]); buf:appendSpace(" "); toLua(node[3])
 		
 	elseif node.type == "unop" then
-		buf:append(node[1]); buf:append(" "); toLua(node[2])
+		buf:append(node[1])
+		if node[1] == "not" then
+			buf:append(" ")
+		end
+		toLua(node[2])
 
 	elseif node.type == "identifier" then
 		buf:append(node.text)
@@ -310,8 +360,29 @@ function luafier.internalToLua(node, opts, buf)
 	end
 end
 
-function luafier.toLua(node, opts)
-	local buf = luaBuffer.new()
+local defopts = {
+	-- attempts to create Lua that has same statements on same line numbers as source file
+	matchLinenumbers = true,
+
+	-- Tries to create as readable Lua as possible. If enabled alongside matchLinenumbers, it will be preferred over this option in stylistic decisions.
+	prettyPrint = true,
+	
+	-- the indentation character (or string) that will be equal to one level of indentation in the output code
+	indentString = "\t",
+
+	-- the newline character that will be used for newlines in the output code
+	nlString = "\n",
+}
+
+function luafier.toLua(node, useropts)
+	local opts = {}
+
+	for k,v in pairs(defopts) do opts[k] = v end
+	if useropts then
+		for k,v in pairs(useropts) do opts[k] = v end
+	end
+
+	local buf = luaBuffer.new(opts.indentString, opts.nlString, not opts.prettyPrint)
 	luafier.internalToLua(node, opts, buf)
 	return buf:tostring()
 end
