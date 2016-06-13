@@ -1,4 +1,4 @@
-local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end;
+local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end
 local luafier = {  }
 
 local LUAFN_ASSERT = "__L_as"
@@ -552,7 +552,7 @@ function luafier.toLua(node, useropts)
 
 	local buf = luaBuffer.new(bufIndentString, opts.nlString, not opts.prettyPrint)
 	buf:append(lunaInclusions)
-	buf:append(";")
+
 	luafier.internalToLua(node, opts, buf)
 	return buf:tostring()
 end

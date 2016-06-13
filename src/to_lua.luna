@@ -551,7 +551,7 @@ function luafier.toLua(node, useropts)
 	local bufIndentString = opts.prettyPrint and opts.indentString or ""
 
 	local buf = luaBuffer.new(bufIndentString, opts.nlString, not opts.prettyPrint)
-	buf:append(lunaInclusions); buf:append(";")
+	buf:append(lunaInclusions)
 
 	luafier.internalToLua(node, opts, buf)
 	return buf:tostring()
