@@ -471,7 +471,7 @@ end
 function Parser:subexp()
 	local unop = self:accept("unop")
 	if unop then
-		return self:node("unop", unop.text)
+		return self:node("unop", unop.text, self:subexp())
 	end
 
 	local e = self:simpleexp()
