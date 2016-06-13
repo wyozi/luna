@@ -448,7 +448,7 @@ function Parser:exp()
 		self:accept("identifier", "true") or
 		self:accept("number") or
 		self:accept("literal") or
-		self:accept("symbol", "...") or
+		self:varargs() or
 		self:func() or
 		self:functioncall() or
 		self:prefixexp() or
@@ -501,14 +501,19 @@ function Parser:funcbody()
 		self:acceptChain(function(_, p, _, b) return self:node("funcbody", p, b) end, {"symbol", "("}, "parlist", {"symbol", ")"}, "block")
 end
 
+function Parser:varargs()
+	local v = self:accept("symbol", "...")
+	if v then
+		return self:node("varargs")
+	end
+end
+
 function Parser:parlist()
 	local names = self:node("parlist")
 
 	local function nextarg()
-		local a = self:typedname()
+		local a = self:typedname() or self:varargs()
 		if a then return a end
-		a = self:accept("symbol", "...")
-		if a then return self:node("varargs") end
 	end
 
 	local name = nextarg()

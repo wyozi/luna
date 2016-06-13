@@ -23,3 +23,13 @@ assert(block3 == "i also support  concatenations")
 local a, b = 4, 2
 assert(a == 4)
 assert(b == 2)
+
+local function lfunc(a, b)
+	b = a + 3 * b
+	return b, a
+end
+local f, s = lfunc(2, 8)
+assert(f == 26 and s == 2)
+
+local lfunc2 = function(...) return ... end
+assert(lfunc2("a") == "a")

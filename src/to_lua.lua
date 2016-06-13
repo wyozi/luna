@@ -452,6 +452,9 @@ function luafier.internalToLua(node, opts, buf)
 	elseif node.type == "number" then
 		buf:append(node.text)
 
+	elseif node.type == "varargs" then
+		buf:append("...")
+
 	else
 		error("unhandled ast node " .. node.type)
 	end
