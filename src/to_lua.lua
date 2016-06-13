@@ -141,6 +141,17 @@ function luafier.internalToLua(node, opts, buf)
 			end
 		end
 
+	elseif node.type == "funcname" then
+		local methodOffset = node.isMethod and -1 or 0
+		for i = 1, #node + methodOffset do
+			if i > 1 then buf:append(".") end
+			toLua(node[i])
+		end
+
+		if node.isMethod then
+			buf:append(":")
+			toLua(node[#node])
+		end
 	elseif node.type == "localfunc" then
 		buf:append("local function ")
 		toLua(node[1])
@@ -189,6 +200,8 @@ function luafier.internalToLua(node, opts, buf)
 		end
 	elseif node.type == "funccall" then
 		toLua(node[1]); buf:append("("); toLua(node[2]); buf:append(")")
+	elseif node.type == "methodcall" then
+		toLua(node[1]); buf:append(":"); toLua(node[2]); buf:append("("); toLua(node[3]); buf:append(")")
 
 	elseif node.type == "args" or node.type == "fieldlist" or node.type == "parlist" or node.type == "typednamelist" or node.type == "varlist" or node.type == "explist" then
 		listToLua(node)
@@ -254,6 +267,12 @@ function luafier.internalToLua(node, opts, buf)
 	elseif node.type == "else" then
 		buf:append("else"); buf:nlIndent()
 		toLua(node[1]); buf:nlUnindent()
+		buf:append("end")
+
+	elseif node.type == "while" then
+		buf:append("while "); toLua(node[1]); buf:append(" do "); buf:nlIndent()
+		toLua(node[2])
+		buf:nlUnindent()
 		buf:append("end")
 
 	elseif node.type == "fornum" then

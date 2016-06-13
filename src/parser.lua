@@ -97,7 +97,12 @@ function Parser:acceptChain(fn, ...)
 		if type(node) == "table" then
 			parsed = self:accept(node[1], node[2])
 		else
-			parsed = self[node](self)
+			local nfn = self[node]
+			if not nfn then
+				error("PARSER ERROR! Inexistent node name: " .. tostring(node))
+			end
+
+			parsed = nfn(self)
 			-- todo should catch errors?
 			--[[local r, e = pcall(self[node], self)
 			if r then
@@ -167,9 +172,10 @@ function Parser:stat()
 		self:acceptChain(function() end, {"symbol", ";"}) or
 		self:acceptChain(assignment, "varlist", {"assignop"}, "explist") or
 		self:functioncall() or
+		self:stat_while() or
 		self:stat_if() or
 		self:stat_for() or
-		self:acceptChain(fnstmt, {"keyword", "function"}, "name", "funcbody") or
+		self:acceptChain(fnstmt, {"keyword", "function"}, "funcname", "funcbody") or
 		self:acceptChain(localfnstmt, {"keyword", "local"}, {"keyword", "function"}, "name", "funcbody") or
 		self:stat_local() or
 
@@ -177,6 +183,14 @@ function Parser:stat()
 		-- TODO move back to laststat
 		self:acceptChain(function(_,e) return self:node("return", e) end, {"keyword", "return"}, "explist") or
 		self:acceptChain(function() return self:node("break") end, {"keyword", "break"})
+end
+function Parser:stat_while()
+	local function whileloop(_,cond,_,b)
+		return self:node("while", cond, b)
+	end
+
+	return
+		self:acceptChain(whileloop, {"keyword", "while"}, "exp", {"keyword", "do"}, "block")
 end
 function Parser:stat_if()
 	local _else, _elseif
@@ -282,6 +296,30 @@ function Parser:laststat()
 	end
 end
 
+function Parser:funcname()
+	local namebuf = self:node("funcname")
+
+	local name = self:name()
+	if not name then return end
+	namebuf[1] = name
+
+	while self:accept("symbol", ".") do
+		name = self:name()
+		if not name then self:error("funcname terminates abruptly") end
+		table.insert(namebuf, name)
+	end
+
+	if self:accept("symbol", ":") then
+		name = self:name()
+		if not name then self:error("funcname terminates abruptly") end
+		table.insert(namebuf, name)
+
+		namebuf.isMethod = true
+	end
+
+	return namebuf
+end
+
 function Parser:varlist()
 	local vars = self:node("varlist")
 
@@ -379,7 +417,6 @@ function Parser:exp()
 	end
 
 	local unop = self:accept("unop")
-
 	if unop then
 		return self:node("unop", unop.text, self:exp())
 	end
@@ -497,7 +534,7 @@ end
 
 function Parser:field()
 	return
-		-- TODO [] = exp
+		self:acceptChain(function(_, n, _, _,e) return self:node("field", n, e) end, {"symbol", "["}, {"literal"}, {"symbol", "]"}, {"assignop", "="}, "exp") or
 		self:acceptChain(function(n,_,e) return self:node("field", n, e) end, "name", {"assignop", "="}, "exp") or
 		self:acceptChain(function(e) return self:node("field", nil, e) end, "exp")
 end
