@@ -97,7 +97,7 @@ elseif args[1] == "t" or args[1] == "test" then
 			if f then
 				f()
 			else
-				error("Lua compilation failed: ", e)
+				error("Lua compilation failed: " .. e)
 			end
 
 			print("done")
