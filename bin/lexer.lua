@@ -1,5 +1,5 @@
 local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local _t=__L_to(o) if _t=="table" then return __L_gmt(o).__type or _t end return _t end;local Lexer = {  }
-Lexer.__index = Lexer
+;Lexer.__index = Lexer
 
 function Lexer.new(str)
 	return setmetatable({
@@ -13,7 +13,7 @@ function Lexer.new(str)
 	Lexer)
 end
 function Lexer:error(msg, line, col)
-	error(msg .. " at line " .. (line or self.line) .. " col " .. (col or self.col))
+	;error(msg .. " at line " .. (line or self.line) .. " col " .. (col or self.col))
 end
 
 
@@ -27,10 +27,10 @@ function Lexer:_readPattern(p, extra)
 
 
 	if extra then 
-	txt = txt:sub(1, -1 - extra) end
+	;txt = txt:sub(1, -1 - extra) end
 
 
-	self.pos = self.pos + #txt
+	;self.pos = self.pos + #txt
 
 
 
@@ -39,14 +39,14 @@ function Lexer:_readPattern(p, extra)
 	if afterLastNLSpace then 
 	local nlCount = 0
 	for nl in txt:gmatch("\n") do nlCount = nlCount + 1 end
-	self.line = self.line + nlCount
-	self.col = 1 + #afterLastNLSpace else 
+	;self.line = self.line + nlCount
+	;self.col = 1 + #afterLastNLSpace else 
 
 
 	local tabCount = 0
 	for tab in txt:gmatch("\t") do tabCount = tabCount + (1) end
 
-	self.col = self.col + (#txt - tabCount + (tabCount * 4)) end
+	;self.col = self.col + (#txt - tabCount + (tabCount * 4)) end
 
 
 	return txt
@@ -65,7 +65,7 @@ function Lexer:_readToken(type, pattern, extra)
 	local token = self:_createToken(type)
 	local matched = self:_readPattern(pattern, extra)
 	if matched then 
-	token.text = matched
+	;token.text = matched
 	return token end
 end
 
@@ -79,7 +79,7 @@ local _keywords = {
 function Lexer:_readIdentifierOrKeyword()
 	local id = self:_readToken("identifier", "^[_%a][_%w]*")
 	if id and _keywords[id.text] then 
-	id.type = "keyword" end
+	;id.type = "keyword" end
 
 	return id
 end
@@ -104,20 +104,20 @@ function Lexer:_readOneLineString()
 	local strCharacter = start
 
 	local token = self:_createToken("literal")
-	token.pos = token.pos - (1)
-	token.col = token.col - (1)
+	;token.pos = token.pos - (1)
+	;token.col = token.col - (1)
 
 	local sbuf = { start }
 
 	while true do 
 
 	local send = self:_readPattern("^[^" .. strCharacter .. "]*")
-	table.insert(sbuf, send)
+	;table.insert(sbuf, send)
 
 
 	local fquot = self:_readPattern("^" .. strCharacter)
 	if not fquot then self:error("unterminated string") end
-	table.insert(sbuf, fquot)
+	;table.insert(sbuf, fquot)
 
 
 	local bslashes = send:match("\\+$")
@@ -126,7 +126,7 @@ function Lexer:_readOneLineString()
 
 
 
-	token.text = table.concat(sbuf, "")
+	;token.text = table.concat(sbuf, "")
 
 	return token
 end
@@ -136,7 +136,7 @@ function Lexer:_readBlockString()
 
 	local block = self:_readBracketBlock()
 	if block then 
-	token.text = block
+	;token.text = block
 	return token end
 end
 
@@ -155,9 +155,9 @@ function Lexer:_readComment()
 
 	local block = self:_readBracketBlock()
 	if block then 
-	c.text = block else 
+	;c.text = block else 
 
-	c.text = self:_readPattern("^[^\n]*") end
+	;c.text = self:_readPattern("^[^\n]*") end
 
 
 	return c

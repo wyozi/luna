@@ -588,13 +588,22 @@ function Parser:varargs()
 end
 
 function Parser:parlist()
-	local names = self:node("parlist")
+	local params = self:node("parlist")
 
 	local function nextarg()
-		return self:typedname() or self:varargs()
+		if local n = self:typedname() then
+			-- check if default value is specified
+			if local value = self:chain("default value"):accept("assignop", "="):expect(self::exp):done((_, e) => e) then
+				return self:node("paramwithvalue", n, value)
+			end
+			return n
+		end
+
+		-- try to match varargs
+		return self:varargs()
 	end
 
-	if local name = nextarg() then
+	if local param = nextarg() then
 
 		-- has varargs been added to parlist
 		local vargsAdded = false
@@ -604,21 +613,21 @@ function Parser:parlist()
 				error("Varargs must be the last element in a parameter list")
 			end
 
-			table.insert(names, name)
+			table.insert(params, param)
 
-			if name.type == "varargs" then
+			if param.type == "varargs" then
 				vargsAdded = true
 			end
 
 			if self:accept("symbol", ",") then
-				name = nextarg()
+				param = nextarg()
 			else
-				name = nil
+				param = nil
 			end
-		until not name
+		until not param
 	end
 
-	return names
+	return params
 end
 
 function Parser:tableconstructor()

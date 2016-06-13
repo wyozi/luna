@@ -67,6 +67,17 @@ fn("hello", "world") -- error: 'b' is invalid type
 fn("hello", 42) -- works
 ```
 
+#### Default parameter values (implemented: ✔)
+
+```lua
+function fn(b: number? = 42) return b end
+
+assert(fn() == 42)
+assert(fn(nil) == 42)
+assert(fn(13) == 13)
+fn("hello") -- throws an error: 'hello' is not a number
+```
+
 #### Set-If-Falsey operator (implemented: ✔)
 
 ```lua

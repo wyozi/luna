@@ -65,38 +65,74 @@ function luafier.listToLua(list, opts, buf)
 	end
 end
 
+-- Processes parlist/funcbody adding eg. type checks if needed 
 function luafier.processParListFuncBlock(parlist, funcbody)
-	local typechecks = {}
+	local paramextras = {}
 	for _,par in ipairs(parlist) do
-		local name = par[1]
-		local type = par[2]
-		if type then
-			table.insert(typechecks, {var = name.text, type = type[1].text, nillable = type[2]})
+		local name, type, value
+		if par.type == "paramwithvalue" then
+			name, type = par[1][1], par[1][2]
+			value = par[2]
+		else
+			name, type = par[1], par[2]
+		end
+
+		if type or value then
+			local pex = {var = name.text}
+
+			if type then
+				pex.type = type[1].text
+				pex.nillable = type[2]
+			end
+			if value then
+				pex.value = value
+			end
+
+			table.insert(paramextras, pex)
 		end
 	end
 
-	for i,tc in pairs(typechecks) do
-		-- copy line from parlist line; we want asserts to be on same line as func declaration
-		local tcnode = { type = "funccall", line = parlist.line }
-		tcnode[1] = { type = "identifier", text = LUAFN_ASSERT }
-		local args = { type = "explist" }
-		tcnode[2] = args
+	for i,tc in pairs(paramextras) do
+		local {var, type, nillable, value} = tc
 
-		local typeChecker = {
-			type = "binop", "==",
-			{ type = "funccall", { type = "identifier", text = LUAFN_TYPE }, { type = "identifier", text = tc.var } },
-			{ type = "literal", text = "\"" .. tc.type .. "\""}
-		}
-		if tc.nillable then
-			local nilChecker = { type = "binop", "==", { type = "identifier", text = tc.var }, { type = "keyword", text = "nil" } }
-			args[1] = { type = "binop", "or", nilChecker, typeChecker }
-		else
-			args[1] = typeChecker
+		if type then
+			local tcnode = parlist:cloneMeta("funccall")
+			tcnode[1] = { type = "identifier", text = LUAFN_ASSERT }
+			local args = { type = "explist" }
+			tcnode[2] = args
+
+			local typeChecker = {
+				type = "binop", "==",
+				{ type = "funccall", { type = "identifier", text = LUAFN_TYPE }, { type = "identifier", text = var } },
+				{ type = "literal", text = "\"" .. type .. "\""}
+			}
+			if nillable then
+				local nilChecker = { type = "binop", "==", { type = "identifier", text = var }, { type = "keyword", text = "nil" } }
+				args[1] = { type = "binop", "or", nilChecker, typeChecker }
+			else
+				args[1] = typeChecker
+			end
+
+			args[2] = { type = "literal", text = [["Parameter ']] .. var .. [[' must be a ]] .. type .. [["]]}
+			
+			table.insert(funcbody, i, tcnode)
 		end
 
-		args[2] = { type = "literal", text = [["Parameter ']] .. tc.var .. [[' must be a ]] .. tc.type .. [["]]}
-		
-		table.insert(funcbody, i, tcnode)
+		if value then
+			local as = parlist:cloneMeta("assignment")
+			
+			-- hack; should clone the value node first
+			value.line = nil
+
+			as[1] = "="
+			as[2] = { type = "identifier", text = var }
+			as[3] = {
+				type = "binop", "or",
+				as[2], value
+			}
+
+			table.insert(funcbody, i, as)
+		end
 	end
 
 	return parlist, funcbody
@@ -157,6 +193,11 @@ function luaBuffer:tostring()
 	return table.concat(self.buf, "")
 end
 
+-- it is safe to insert semicolon after this node types
+local _safeSemicolon = {
+	["assignment"] = true, ["funccall"] = true
+}
+
 function luafier.internalToLua(node, opts, buf)
 	local function toLua(lnode)
 		luafier.internalToLua(lnode, opts, buf)
@@ -198,6 +239,7 @@ function luafier.internalToLua(node, opts, buf)
 	end
 
 	if node.type == "block" then
+		local prevnode
 		for i,snode in ipairs(node) do
 
 			local lndiff = getLinenoDiff(buf.line, snode)
@@ -213,7 +255,14 @@ function luafier.internalToLua(node, opts, buf)
 				if i > 1 then buf:nl() end
 			end
 
+			-- Add semicolon if it's safe and if there seems to be no other way
+			if buf.hasIndented and snode and _safeSemicolon[snode.type] then
+				buf:append(";")
+			end
+
 			toLua(snode)
+
+			prevnode = snode
 		end
 
 	elseif node.type == "local" then
@@ -323,6 +372,8 @@ function luafier.internalToLua(node, opts, buf)
 		listToLua(node)
 		
 	elseif node.type == "typedname" then
+		toLua(node[1])
+	elseif node.type == "paramwithvalue" then
 		toLua(node[1])
 
 	elseif node.type == "return" then

@@ -1,0 +1,14 @@
+local function a(s: number? = 42)
+	return s
+end
+
+assert(a() == 42)
+assert(a(12) == 12)
+
+local function b(s = 12)
+	return s
+end
+
+assert(b() == 12)
+assert(b(14) == 14)
+assert(b("boi") == "boi")
