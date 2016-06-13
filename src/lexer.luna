@@ -18,11 +18,16 @@ end
 
 -- Attempts to match given pattern and advances lexer forward if match is found
 -- 'p' must be a Lua pattern string
+-- 'extra' is optional parameter which is the amount of extra matched characters at the end. These are removed from match
 -- Returns match as text
-function Lexer:_readPattern(p)
+function Lexer:_readPattern(p, extra)
 	local txt = self.buf:match(p, self.pos)
 	if not txt then
 		return nil
+	end
+
+	if extra then
+		txt = txt:sub(1, -1 - extra)
 	end
 
 	self.pos = self.pos + #txt
@@ -56,9 +61,9 @@ function Lexer:_createToken(type)
 	return { type = type, pos = pos, line = line, col = col }
 end
 
-function Lexer:_readToken(type, pattern)
+function Lexer:_readToken(type, pattern, extra)
 	local token = self:_createToken(type)
-	local matched = self:_readPattern(pattern)
+	local matched = self:_readPattern(pattern, extra)
 	if matched then
 		token.text = matched
 		return token
@@ -69,7 +74,7 @@ local _keywords = {
 	["local"] = true, ["return"] = true, ["break"] = true, ["function"] = true,
 	["end"] = true, ["do"] = true, ["if"] = true, ["while"] = true, ["for"] = true,
 	["else"] = true, ["elseif"] = true, ["then"] = true, ["in"] = true,
-	["nil"] = true, ["true"] = true, ["false"] = true
+	["nil"] = true, ["true"] = true, ["false"] = true, ["repeat"] = true, ["until"] = true
 }
 function Lexer:_readIdentifierOrKeyword()
 	local id = self:_readToken("identifier", "^[_%a][_%w]*")
@@ -194,8 +199,8 @@ function Lexer:next()
 		self:_readToken("binop", "^%>%=") or
 		self:_readToken("binop", "^%=%=") or
 		self:_readToken("binop", "^%~%=") or
-		self:_readToken("binop", "^and") or
-		self:_readToken("binop", "^or") or
+		self:_readToken("binop", "^and[^%a]", 1) or
+		self:_readToken("binop", "^or[^%a]", 1) or
 		-- 1-char binops
 		self:_readToken("binop", "^[%+%-%*%/%^%%%<%>]") or
 
@@ -203,8 +208,7 @@ function Lexer:next()
 		self:_readToken("assignop", "^%=") or
 
 		-- unary ops
-		self:_readToken("unop", "^%-") or
-		self:_readToken("unop", "^not") or
+		self:_readToken("unop", "^not[^%a]", 1) or
 		self:_readToken("unop", "^%#") or
 		self:_readToken("unop", "^%~") or
 

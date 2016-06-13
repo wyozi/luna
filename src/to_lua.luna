@@ -352,6 +352,8 @@ function luafier.internalToLua(node, opts, buf)
 
 	elseif node.type == "index" then
 		toLua(node[1]); buf:append("."); toLua(node[2])
+	elseif node.type == "indexb" then
+		toLua(node[1]); buf:append("["); toLua(node[2]); buf:append("]")
 
 	elseif node.type == "tableconstructor" then
 		buf:append("{");
@@ -420,6 +422,12 @@ function luafier.internalToLua(node, opts, buf)
 			toLua(node[2])
 		end, true)
 		buf:append("end")
+	elseif node.type == "repeat" then
+		buf:append("repeat");
+		wrapIndent(node, node[1], function()
+			toLua(node[1])
+		end, true)
+		buf:append("until "); toLua(node[2])
 
 	elseif node.type == "fornum" then
 		local var, low, high, step, b = node[1], node[2], node[3], node[4], node[5]

@@ -165,7 +165,8 @@ function Parser:block()
 			local endkw =
 				self:accept("keyword", "end") or
 				self:accept("keyword", "elseif") or
-				self:accept("keyword", "else")
+				self:accept("keyword", "else") or
+				self:accept("keyword", "until")
 
 			if endkw then
 				finished = true
@@ -214,9 +215,13 @@ function Parser:stat_while()
 	local function whileloop(_,cond,_,b)
 		return self:node("while", cond, b)
 	end
+	local function repeatloop(_,b,cond)
+		return self:node("repeat", b, cond)
+	end
 
 	return
-		self:acceptChain(whileloop, {"keyword", "while"}, "exp", {"keyword", "do"}, "block")
+		self:acceptChain(whileloop, {"keyword", "while"}, "exp", {"keyword", "do"}, "block") or
+		self:acceptChain(repeatloop, {"keyword", "repeat"}, "block", "exp")
 end
 function Parser:stat_if()
 	local _else, _elseif
@@ -346,11 +351,11 @@ end
 function Parser:varlist()
 	local vars = self:node("varlist")
 
-	local var = self:var()
+	local var = self:primaryexp()
 	while var do
 		table.insert(vars, var)
 		if self:accept("symbol", ",") then
-			var = self:var()
+			var = self:primaryexp()
 		else
 			var = nil
 		end
@@ -376,24 +381,6 @@ function Parser:type()
 			local isOptional = self:accept("symbol", "?")
 			return self:node("type", name, not not isOptional)
 		end, {"symbol", ":"}, {"identifier"})
-end
-
-function Parser:var()
-	local n = self:name()
-
-	if not n then
-		return
-	end
-
-	local f =
-		self:acceptChain(function(_,e) return e end, {"symbol", "["}, "exp", {"symbol", "]"}) or
-		self:acceptChain(function(_,e) return e end, {"symbol", "."}, "name")
-
-	if f then
-		return self:node("index", n, f)
-	end
-
-	return n
 end
 
 function Parser:typednamelist()
@@ -436,7 +423,7 @@ function Parser:primaryexp()
 
 	while true do
 		local nn = self:acceptChain(function(_, nm) return self:node("index", n, nm) end, {"symbol", "."}, "name") or
-			self:acceptChain(function(_, e) return self:node("index", n, e) end, {"symbol", "["}, "exp", {"symbol", "]"}) or
+			self:acceptChain(function(_, e) return self:node("indexb", n, e) end, {"symbol", "["}, "exp", {"symbol", "]"}) or
 			self:acceptChain(function(_, nm, a) return self:node("methodcall", n, nm, a) end, {"symbol", ":"}, "name", "args") or
 			self:acceptChain(function(a) return self:node("funccall", n, a) end, "args")
 		
@@ -469,7 +456,7 @@ function Parser:simpleexp()
 end
 
 function Parser:subexp()
-	local unop = self:accept("unop")
+	local unop = self:accept("unop") or self:accept("binop", "-")
 	if unop then
 		return self:node("unop", unop.text, self:subexp())
 	end
@@ -507,7 +494,8 @@ end
 
 function Parser:args()
 	return
-		self:acceptChain(function(_,el) return self:node("args", el) end, {"symbol", "("}, "explist", {"symbol", ")"})
+		self:acceptChain(function(_,el) return self:node("args", el) end, {"symbol", "("}, "explist", {"symbol", ")"}) or
+		self:acceptChain(function(tbl) return self:node("args", self:node("explist", tbl)) end, "tableconstructor")
 end
 
 function Parser:func()

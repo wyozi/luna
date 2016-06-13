@@ -9,7 +9,7 @@ local function loadInput()
 	return io.read("*a")
 end
 
-_lexer, _parser, _toLua = require("src/lexer"), require("src/parser"), require("src/to_lua").toLua
+_lexer, _parser, _toLua = require("bin/lexer"), require("bin/parser"), require("bin/to_lua").toLua
 
 function toAST(code)
 	local l = _lexer.new(code)
@@ -23,6 +23,20 @@ if args[1] == "compile" or args[1] == "c" then
 	local block = toAST(loadInput())
 	local luac = _toLua(block)
 	print(luac)
+elseif args[1] == "compile-self" then
+
+	for _,src in pairs{"lexer", "parser", "to_lua"} do
+		local f = io.open("src/" .. src .. ".luna", "rb")
+		local luna = f:read("*a")
+		f:close()
+
+		local lua = _toLua(toAST(luna))
+
+		local nf, e = io.open("bin/" .. src .. ".lua", "w")
+		nf:write(lua)
+		nf:close()
+	end
+
 elseif args[1] == "ast" then
 	local block = toAST(loadInput())
 	
