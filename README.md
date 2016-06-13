@@ -28,7 +28,7 @@ t.num *= 3.5
 assert(t.num == 7)
 ```
 
-#### Conditional assignment (`if local` (implemented: ✔) / `while local` (implemented: ✘))
+#### `if local` (implemented: ✔)
 
 ```lua
 if local x = someMethod() then
@@ -36,11 +36,6 @@ if local x = someMethod() then
 end
 
 assert(x == nil) -- no longer in scope
-```
-```lua
-while local node = getNextNode() do
-	print("node: ", node)
-end
 ```
 
 #### Shorthand function syntax (implemented: ✔)
@@ -94,17 +89,6 @@ function fn(x: number)
 end
 ```
 
-#### Pattern matching (implemented: ✘)
-
-```lua
-x match
-	0..10 => print("is a number between 0 and 10")
-	"hello" => print("is a string that says hello")
-	s: boolean => print("is a boolean: " .. s)
-	_ => print("is nothing we care about :(")
-end
-```
-
 #### Local table/array destructuring (implemented: ✔)
 
 ```lua
@@ -133,6 +117,30 @@ for [first, second] of vecs do
 end
 ```
 
+#### Method references (implemented: ✔)
+
+```lua
+function obj:Method()
+	local ref = self::Callback
+
+	ref("this is the arg")
+end
+function obj:Callback(arg)
+	print(arg)
+end
+```
+
+#### Pattern matching (implemented: ✘)
+
+```lua
+x match
+	0..10 => print("is a number between 0 and 10")
+	"hello" => print("is a string that says hello")
+	s: boolean => print("is a boolean: " .. s)
+	_ => print("is nothing we care about :(")
+end
+```
+
 #### Macros (implemented: ✘)
 
 Note: cannot create your own macros at the moment.
@@ -151,17 +159,4 @@ print(x?.item) -- prints "banana"
 
 x = nil
 print(x?.item) -- prints nil
-```
-
-#### Method references (implemented: ✘)
-
-```lua
-function obj:Method()
-	local ref = self::Callback
-
-	ref("this is the arg")
-end
-function obj:Callback(arg)
-	print(arg)
-end
 ```
