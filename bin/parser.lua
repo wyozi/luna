@@ -430,13 +430,19 @@ function Parser:primaryexp()
 	local n = pref
 
 	while true do 
+
 	local nn = self:acceptChain(function (_, nm) ; return self:node("index", n, nm) end, { "symbol", "." }, "name") or
 	self:acceptChain(function (_, e) ; return self:node("indexb", n, e) end, { "symbol", "[" }, "exp", { "symbol", "]" }) or
 	self:acceptChain(function (_, nm, a) ; return self:node("methodcall", n, nm, a) end, { "symbol", ":" }, "name", "args") or
 	self:acceptChain(function (a) ; return self:node("funccall", n, a) end, "args")
 
 	if not nn then 
-	return n end
+
+
+	local pend = self:acceptChain(function (_, _, nm) 
+	return self:node("methodref", n, nm) end, { "symbol", ":" }, { "symbol", ":" }, "name")
+
+	return pend or n end
 
 
 	n = nn end

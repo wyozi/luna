@@ -476,7 +476,12 @@ function luafier.internalToLua(node, opts, buf)
 		if destr then ; toLua(destr) end
 		toLua(b)
 	end, 
-	true); buf:append("end") elseif node.type == "binop" then 
+	true); buf:append("end") elseif node.type == "methodref" then 
+
+	buf:append("(function(...) return ")
+	toLua(node[1])
+	buf:append(":"); toLua(node[2]); buf:append("(...)")
+	buf:append(" end)") elseif node.type == "binop" then 
 
 	toLua(node[2])
 	buf:appendSpace(" "); buf:append(node[1])

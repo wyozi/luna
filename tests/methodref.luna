@@ -1,0 +1,15 @@
+local t = {}
+
+function t:methodA()
+	local selfRef = self::methodB
+	return selfRef()
+end
+
+function t:methodB()
+	return self == t
+end
+
+assert(t:methodA())
+
+local outsideRef = t::methodB
+assert(outsideRef())
