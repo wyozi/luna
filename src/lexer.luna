@@ -163,6 +163,19 @@ function Lexer:_readComment()
 	return c
 end
 
+function Lexer:_readBinLiteral()
+	if local n = self:_readToken("number", "^0b[10_]+") then
+		local bin = n.text:gsub("[^01]", "")
+		
+		if local dec = tonumber(bin, 2) then
+			-- TODO modifying text to be something it was not before is kind of bad
+			--      maybe create a custom token for binary literals?
+			n.text = tostring(dec)
+			return n
+		end
+	end
+end
+
 function Lexer:next()
 	-- read all comments
 	repeat
@@ -211,6 +224,7 @@ function Lexer:next()
 		self:_readIdentifierOrKeyword() or
 
 		self:_readToken("number", "^0x[%dabcdefABCDEF]+") or
+		self:_readBinLiteral() or
 		self:_readToken("number", "^[%d]+e[%d]+") or
 		self:_readToken("number", "^[%d%.]+") or
 

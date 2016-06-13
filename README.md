@@ -28,6 +28,13 @@ t.num *= 3.5
 assert(t.num == 7)
 ```
 
+#### Binary literals (implemented: ✔)
+
+```lua
+assert(0b11 == 3)
+assert(0b10_01 == 9)
+```
+
 #### `if local` (implemented: ✔)
 
 ```lua

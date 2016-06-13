@@ -2,7 +2,7 @@ local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)loca
 local gettype = type
 
 local Parser = {  }
-;Parser.__index = Parser
+Parser.__index = Parser
 
 function Parser.new(lexer)
 	local p = setmetatable({
@@ -19,92 +19,92 @@ function Parser:isEOF()
 end
 
 function Parser:next()
-	;self.curToken = self.tokens[self.tokenIndex]
+	self.curToken = self.tokens[self.tokenIndex]
 
-	;self.nextToken = self.tokens[self.tokenIndex + 1]
+	self.nextToken = self.tokens[self.tokenIndex + 1]
 	if not self.nextToken then 
 	local nt = self.lexer:next()
 	if nt then 
-	;self.tokens[self.tokenIndex + 1] = nt
-	;self.nextToken = nt end end
+	self.tokens[self.tokenIndex + 1] = nt
+	self.nextToken = nt end end
 
 
 
-	;self.tokenIndex = self.tokenIndex + 1
+	self.tokenIndex = self.tokenIndex + 1
 	return self.curToken
 end
 
 function Parser:_createRestorePoint()
 	local point = self.tokenIndex
 	return function() 
-	;self.tokenIndex = point - 1
+	self.tokenIndex = point - 1
 	self:next() end
 end
 
 
 function Parser:error(text)
-	;__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
 	local line, col
-	if self.nextToken then line, col = self.nextToken.line, self.nextToken.col else 
+	if self.nextToken then ;line, col = self.nextToken.line, self.nextToken.col else 
 
-	;line, col = -1, -1 end
+	line, col = -1, -1 end
 
 
-	;text = text .. " preceding tokens: "
+	text = text .. " preceding tokens: "
 	for i = 2, 0, -1 do
 		local t = self.tokens[self.tokenIndex - 1 - i]
-		if t then text = text .. " [" .. t.type .. ":" .. t.text .. "]" end
+		if t then ;text = text .. " [" .. t.type .. ":" .. t.text .. "]" end
 	end
 
-	;error("[Luna Parser] " .. text .. " at line " .. line .. " col " .. col)
+	error("[Luna Parser] " .. text .. " at line " .. line .. " col " .. col)
 end
 function Parser:expectedError(expected)
-	;__L_as(__L_t(expected) == "string", "Parameter 'expected' must be a string")
+	__L_as(__L_t(expected) == "string", "Parameter 'expected' must be a string")
 	local t = string.format("expected %s, got %s", expected, (self.nextToken and self.nextToken.type))
 	return self:error(t)
 end
 local node_meta = {  }
-;node_meta.__index = node_meta
+node_meta.__index = node_meta
 
 function node_meta:cloneMeta(newType)
-	;__L_as(__L_t(newType) == "string", "Parameter 'newType' must be a string")
+	__L_as(__L_t(newType) == "string", "Parameter 'newType' must be a string")
 	return setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
 end
 function Parser:node(type, ...)
-	;__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")
+	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")
 	local n = setmetatable({ type = type, line = (self.curToken) and (self.curToken.line), col = (self.curToken) and (self.curToken.col) }, node_meta)
 	local args = { ... }
 
 
 
 	if gettype(args[1]) == "table" and args[1].type then 
-	;n.line = args[1].line end
+	n.line = args[1].line end
 
 
 	for i, v in pairs(args) do
-		;n[i] = v
+		n[i] = v
 	end
 
 	return n
 end
 function Parser:accept(type, text)
-	;__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")__L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string");__L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string")
 	if self.nextToken and self.nextToken.type == type and (not text or self.nextToken.text == text) then return self:next() end
 end
 
 function Parser:expect(type, text)
-	;__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string");__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
 	local n = self:accept(type, text)
 	if not n then return self:error("expected " .. type) end
 	return n
 end
 function Parser:checkEOF(text)
-	;__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
 	if not self:isEOF() then return self:error(text) end
 end
 
 function Parser:acceptChain(fn, ...)
-	;__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
+	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
 	local rp = self:_createRestorePoint()
 	local line, col = (self.nextToken) and (self.nextToken.line), (self.nextToken) and (self.nextToken.col)
 
@@ -112,14 +112,14 @@ function Parser:acceptChain(fn, ...)
 	for i, node in pairs({ ... }) do
 		local parsed
 		if type(node) == "table" then 
-		;parsed = self:accept(node[1], node[2]) else 
+		parsed = self:accept(node[1], node[2]) else 
 
 		local nfn = self[node]
 		if not nfn then 
-		;error("PARSER ERROR! Inexistent node name: " .. tostring(node)) end
+		error("PARSER ERROR! Inexistent node name: " .. tostring(node)) end
 
 
-		;parsed = nfn(self) end
+		parsed = nfn(self) end
 
 
 
@@ -131,34 +131,34 @@ function Parser:acceptChain(fn, ...)
 
 
 		if not parsed then 
-		;rp()
+		rp()
 		return  end
 
 
-		;t[i] = parsed
+		t[i] = parsed
 	end
 
 	local ret = { fn(unpack(t)) }
 
 
 	if ret[1] and type(ret[1]) == "table" and ret[1].type then 
-	;ret[1].line = line
-	;ret[1].col = col end
+	ret[1].line = line
+	ret[1].col = col end
 
 
 	return unpack(ret)
 end
 
 local chain_meta = {  }
-;chain_meta.__index = chain_meta
+chain_meta.__index = chain_meta
 
 function chain_meta:insertParserFn(expected, fn, name)
-	;__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean")__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")__L_as(name == nil or __L_t(name) == "string", "Parameter 'name' must be a string")
-	;table.insert(self.chain, { name = name or "unknown", expected = expected, fn = fn })
+	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean");__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function");__L_as(name == nil or __L_t(name) == "string", "Parameter 'name' must be a string")
+	table.insert(self.chain, { name = name or "unknown", expected = expected, fn = fn })
 	return self
 end
 function chain_meta:insertToken(expected, type, text)
-	;__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean")__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")__L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string")table.insert(self.chain, { name = type, expected = expected, fn = function() return self.parser:accept(type, text) end })
+	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean");__L_as(__L_t(type) == "string", "Parameter 'type' must be a string");__L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string");table.insert(self.chain, { name = type, expected = expected, fn = function() return self.parser:accept(type, text) end })
 	return self
 end
 function chain_meta:accept(a, b)
@@ -170,7 +170,7 @@ function chain_meta:expect(a, b)
 	return self:insertToken(true, a, b)
 end
 function chain_meta:done(fn)
-	;__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
+	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
 	local parser = self.parser
 	local rp = parser:_createRestorePoint()
 	local line, col = (parser.nextToken) and (parser.nextToken.line), (parser.nextToken) and (parser.nextToken.col)
@@ -186,19 +186,19 @@ function chain_meta:done(fn)
 		parser:expectedError(name) end
 
 
-		;rp()
+		rp()
 		return  end
 
 
-		;t[i] = parsed
+		t[i] = parsed
 	end
 
 	local ret = { fn(unpack(t)) }
 
 
 	if ret[1] and type(ret[1]) == "table" and ret[1].type then 
-	;ret[1].line = line
-	;ret[1].col = col end
+	ret[1].line = line
+	ret[1].col = col end
 
 
 	return unpack(ret)
@@ -207,15 +207,15 @@ end
 
 
 function Parser:chain(name)
-	;__L_as(__L_t(name) == "string", "Parameter 'name' must be a string")
+	__L_as(__L_t(name) == "string", "Parameter 'name' must be a string")
 	return setmetatable({ name = name, parser = self, chain = {  } }, chain_meta)
 end
 function Parser:block()
 	local block = self:node("block")
 
 
-	;block.line = self.nextToken.line
-	;block.col = self.nextToken.col
+	block.line = self.nextToken.line
+	block.col = self.nextToken.col
 
 	local finished = false
 
@@ -231,14 +231,14 @@ function Parser:block()
 
 
 	if endkw then 
-	;finished = true
-	;block.endkw = endkw.text end
+	finished = true
+	block.endkw = endkw.text end
 
 
 	break end
 
 
-	;table.insert(block, stat) end
+	table.insert(block, stat) end
 
 
 	if not finished and not self:isEOF() then 
@@ -290,9 +290,9 @@ function Parser:stat_if()
 
 	local function cont(b, node)
 		if b.endkw == "elseif" then 
-		;table.insert(node, _elseif()) elseif b.endkw == "else" then 
+		table.insert(node, _elseif()) elseif b.endkw == "else" then 
 
-		;table.insert(node, _else()) end
+		table.insert(node, _else()) end
 	end
 
 
@@ -307,13 +307,13 @@ function Parser:stat_if()
 		if not b then self:error("expected elseif condition or block") end
 
 		local node = self:node("elseif", cond, b)
-		;cont(b, node)
+		cont(b, node)
 		return node
 	end
 
 	local function normalif(_, cond, _, b)
 		local node = self:node("if", cond, b)
-		;cont(b, node)
+		cont(b, node)
 		return node
 	end
 
@@ -323,7 +323,7 @@ function Parser:stat_if()
 
 
 		local node = self:node("ifassign", assign, b)
-		;cont(b, node)
+		cont(b, node)
 		return node
 	end
 
@@ -358,7 +358,7 @@ function Parser:stat_local()
 	local function localstmt(_, namelist)
 		local explist
 		if self:accept("assignop", "=") then 
-		;explist = self:explist()
+		explist = self:explist()
 		if not explist then self:error("expected explist") end end
 
 
@@ -398,20 +398,20 @@ function Parser:funcname()
 
 	local name = self:name()
 	if not name then return  end
-	;namebuf[1] = name
+	namebuf[1] = name
 
 	while self:accept("symbol", ".") do 
-	;name = self:name()
+	name = self:name()
 	if not name then self:error("funcname terminates abruptly") end
-	;table.insert(namebuf, name) end
+	table.insert(namebuf, name) end
 
 
 	if self:accept("symbol", ":") then 
-	;name = self:name()
+	name = self:name()
 	if not name then self:error("funcname terminates abruptly") end
-	;table.insert(namebuf, name)
+	table.insert(namebuf, name)
 
-	;namebuf.isMethod = true end
+	namebuf.isMethod = true end
 
 
 	return namebuf
@@ -422,11 +422,11 @@ function Parser:varlist()
 
 	local var = self:primaryexp()
 	while var do 
-	;table.insert(vars, var)
+	table.insert(vars, var)
 	if self:accept("symbol", ",") then 
-	;var = self:primaryexp() else 
+	var = self:primaryexp() else 
 
-	;var = nil end end
+	var = nil end end
 
 
 
@@ -459,11 +459,11 @@ function Parser:typednamelist()
 
 	local name = self:typedname()
 	while name do 
-	;table.insert(names, name)
+	table.insert(names, name)
 	if self:accept("symbol", ",") then 
-	;name = self:typedname() else 
+	name = self:typedname() else 
 
-	;name = nil end end
+	name = nil end end
 
 
 
@@ -475,11 +475,11 @@ function Parser:explist()
 
 	local exp = self:exp()
 	while exp do 
-	;table.insert(exps, exp)
+	table.insert(exps, exp)
 	if self:accept("symbol", ",") then 
-	;exp = self:exp() else 
+	exp = self:exp() else 
 
-	;exp = nil end end
+	exp = nil end end
 
 
 
@@ -508,7 +508,7 @@ function Parser:primaryexp()
 	return pend or n end
 
 
-	;n = nn end
+	n = nn end
 end
 
 
@@ -548,8 +548,8 @@ function Parser:subexp()
 
 
 	local node = self:node("binop", b.text, e, e2)
-	;node.line = e.line
-	;node.col = e.col
+	node.line = e.line
+	node.col = e.col
 	return node end end
 
 
@@ -610,19 +610,19 @@ function Parser:parlist()
 
 	repeat 
 	if vargsAdded then 
-	;error("Varargs must be the last element in a parameter list") end
+	error("Varargs must be the last element in a parameter list") end
 
 
-	;table.insert(params, param)
+	table.insert(params, param)
 
 	if param.type == "varargs" then 
-	;vargsAdded = true end
+	vargsAdded = true end
 
 
 	if self:accept("symbol", ",") then 
-	;param = nextarg() else 
+	param = nextarg() else 
 
-	;param = nil end until not param end
+	param = nil end until not param end
 
 
 
@@ -640,11 +640,11 @@ function Parser:fieldlist()
 
 	local field = self:field()
 	while field do 
-	;table.insert(fields, field)
+	table.insert(fields, field)
 	if self:fieldsep() then 
-	;field = self:field() else 
+	field = self:field() else 
 
-	;field = nil end end
+	field = nil end end
 
 
 
