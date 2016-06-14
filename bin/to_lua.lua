@@ -67,11 +67,11 @@ end
 
 
 function luafier.processParListFuncBlock(parlist, funcbody)
+	__L_as(__L_t(parlist) == "lunanode", "Parameter 'parlist' must be a lunanode");__L_as(__L_t(funcbody) == "lunanode", "Parameter 'funcbody' must be a lunanode")
 	local paramextras = {  }
 	for _, par in ipairs(parlist) do
 		local name, type, value
-		if par.type == "paramwithvalue" then 
-		name, type = par[1][1], par[1][2]
+		if par.type == "paramwithvalue" then name, type = par[1][1], par[1][2]
 		value = par[2] else 
 
 		name, type = par[1], par[2] end

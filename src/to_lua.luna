@@ -66,7 +66,7 @@ function luafier.listToLua(list, opts, buf: luabuf)
 end
 
 -- Processes parlist/funcbody adding eg. type checks if needed 
-function luafier.processParListFuncBlock(parlist, funcbody)
+function luafier.processParListFuncBlock(parlist: lunanode, funcbody: lunanode)
 	local paramextras = {}
 	for _,par in ipairs(parlist) do
 		local name, type, value

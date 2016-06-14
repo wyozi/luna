@@ -95,6 +95,38 @@ function Parser:node(type, ...)
 
 	return n
 end
+
+
+
+
+
+local nodecreator_meta = {  }
+local nodecreator_node_meta = {
+	__call = function (t, ...)
+		local n = t.n
+		for i, c in ipairs({ ... }) do
+			if __L_t(c)=="string" then 
+			local str = c
+			c = n:cloneMeta("identifier")
+			c.text = str elseif type(c) == "function" then 
+
+			c = c() end
+
+
+			n[i] = c
+		end
+		return n
+	end
+}
+
+nodecreator_meta.__index = function (self, name)
+	local n = rawget(self, "base"):cloneMeta(name)
+	return setmetatable({ n = n }, nodecreator_node_meta)
+end
+function Parser:nodeCreator(base)
+	return setmetatable({ base = base }, nodecreator_meta)
+end
+
 function Parser:token2node(token)
 	__L_as(token == nil or __L_t(token) == "lunatoken", "Parameter 'token' must be a lunatoken")
 	if not token then return nil end
@@ -496,6 +528,79 @@ function Parser:explist()
 	return exps
 end
 
+function Parser:macroinvocation(prefix)
+	local function expandMethodMacro(name, args)
+		if name.text == "map" then 
+		local nargs = args:cloneMeta("args")
+		nargs[1] = prefix
+		for i = 1, #args do nargs[1 + i] = args[i] end
+
+		return self:macroexpand_map(nargs) else 
+
+		self:error("unknown macro name '" .. name.text .. "'") end
+	end
+
+
+	return self:acceptChain(function(_, nm, _, a) return expandMethodMacro(nm, a) end, { "symbol", ":" }, "name", { "symbol", "!" }, "args")
+end
+
+function Parser:macroexpand_map(args)
+	local nc = self:nodeCreator(args)
+
+	local sourceTable = args[1]
+	local cfunc = args[2][1]
+
+	__L_as(cfunc, "cannot destructure nil");local cpars, cbody = cfunc[1], cfunc[2]
+
+
+	if cbody.type == "return" then 
+	cbody = cbody[1] end
+
+
+	local cparFirstName = cpars[1][1].text
+	local function rewriteIdentifiers(n)
+		if __L_t(n)=="lunanode" then 
+		for _, v in pairs(n) do
+			rewriteIdentifiers(v)
+		end
+
+		if n.type == "identifier" and n.text == cparFirstName then 
+		n.text = "v" end end
+	end
+
+
+
+	rewriteIdentifiers(cbody)
+
+	local mm = nc.parexp(nc.funccall(nc.parexp(nc.func(nc.funcbody(nc.parlist(nc.typedname("t")), 
+	nc.block(nc["local"](nc.typedname("nt"), nc.explist(nc.tableconstructor(nc.fieldlist()))), 
+	nc.forgen(nc.typednamelist(nc.typedname("k"), nc.typedname("v")), 
+	nc.funccall("pairs", nc.args(nc.explist("t"))), 
+	nc.block(nc.assignment(function() return "=" end, 
+	nc.varlist(nc.indexb("nt", "k")), 
+	nc.explist(cbody)))), 
+
+
+
+
+	nc["return"]("nt"))))), 
+
+
+
+	nc.args(nc.explist(sourceTable:clone({ line = args.line })))))
+
+
+
+
+
+
+
+
+
+
+	return mm
+end
+
 function Parser:primaryexp()
 	local pref = self:prefixexp()
 	if not pref then return  end
@@ -508,7 +613,8 @@ function Parser:primaryexp()
 	self:acceptChain(function(_, _, nm) return self:node("indexsafe", n, nm) end, { "symbol", "?" }, { "symbol", "." }, "name") or
 	self:acceptChain(function(_, e) return self:node("indexb", n, e) end, { "symbol", "[" }, "exp", { "symbol", "]" }) or
 	self:acceptChain(function(_, nm, a) return self:node("methodcall", n, nm, a) end, { "symbol", ":" }, "name", "args") or
-	self:acceptChain(function(a) return self:node("funccall", n, a) end, "args")
+	self:acceptChain(function(a) return self:node("funccall", n, a) end, "args") or
+	self:macroinvocation(n)
 
 
 	if not nn then 

@@ -9,12 +9,13 @@ local function loadInput()
 	return io.read("*a")
 end
 
-_lexer, _parser, _toLua = require("bin/lexer"), require("bin/parser"), require("bin/to_lua").toLua
+local _lexer, _parser, _toLua = require("bin/lexer"), require("bin/parser"), require("bin/to_lua").toLua
 
 function toAST(code)
 	local l = _lexer.new(code)
 	local p = _parser.new(l)
-	return p:block()
+	local n = p:block()
+	return n
 end
 
 compilestring = loadstring or load -- 5.2/5.3 compat

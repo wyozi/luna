@@ -1,0 +1,4 @@
+local t = {"i am doge"}
+
+local nt = t:map!((w) => w:upper())
+assert(t[1] == "i am doge" and nt[1] == "I AM DOGE")

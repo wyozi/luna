@@ -199,7 +199,7 @@ function Lexer:next()
 	self:_readToken("binop", "^%.%.") or
 
 
-	self:_readToken("symbol", "^[%:%;%,%(%)%[%]%{%}%.%?]") or
+	self:_readToken("symbol", "^[%:%;%,%(%)%[%]%{%}%.%?%!]") or
 
 
 	self:_readToken("assignop", "^[%+%-%*%/%^%%]%=") or

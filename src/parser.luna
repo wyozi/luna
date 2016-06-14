@@ -95,6 +95,38 @@ function Parser:node(type: string, ...)
 
 	return n
 end
+
+-- Creates a nodecreator thing that allows creating ast trees easily. Strings are converted to identifiers
+-- Eg.
+-- local nc = self:nodeCreator(baseNode)
+-- local tree = nc.funccall("hello", nc.args(""))
+local nodecreator_meta = {}
+local nodecreator_node_meta = {
+	__call = function(t, ...)
+		local n = t.n
+		for i,c in ipairs{...} do
+			if c is string then
+				local str = c
+				c = n:cloneMeta("identifier")
+				c.text = str
+			elseif type(c) == "function" then
+				c = c()
+			end
+
+			n[i] = c
+		end
+		return n
+	end
+}
+
+nodecreator_meta.__index = function(self, name)
+	local n = rawget(self, "base"):cloneMeta(name)
+	return setmetatable({n = n}, nodecreator_node_meta)
+end
+function Parser:nodeCreator(base)
+	return setmetatable({ base = base }, nodecreator_meta)
+end
+
 function Parser:token2node(token: lunatoken?)
 	return nil if not token
 
@@ -496,6 +528,79 @@ function Parser:explist()
 	return exps
 end
 
+function Parser:macroinvocation(prefix)
+	local function expandMethodMacro(name, args)
+		if name.text == "map" then
+			local nargs = args:cloneMeta("args")
+			nargs[1] = prefix
+			for i=1,#args do nargs[1 + i] = args[i] end
+
+			return self:macroexpand_map(nargs)
+		else
+			self:error("unknown macro name '" .. name.text .. "'")
+		end
+	end
+
+	return
+		self:acceptChain((_, nm, _, a) => expandMethodMacro(nm, a), {"symbol", ":"}, "name", {"symbol", "!"}, "args")
+end
+function Parser:macroexpand_map(args)
+	local nc = self:nodeCreator(args)
+
+	local sourceTable = args[1]
+	local cfunc = args[2][1]
+
+	local [cpars, cbody] = cfunc
+
+	-- gets rid of return statement if present
+	if cbody.type == "return" then
+		cbody = cbody[1]
+	end
+
+	local cparFirstName = cpars[1][1].text
+	local function rewriteIdentifiers(n)
+		if n is lunanode then
+			for _,v in pairs(n) do
+				rewriteIdentifiers(v)
+			end
+
+			if n.type == "identifier" and n.text == cparFirstName then
+				n.text = "v"
+			end
+		end
+	end
+
+	rewriteIdentifiers(cbody)
+
+	local mm =
+		nc.parexp(nc.funccall(
+			nc.parexp(
+				nc.func(nc.funcbody(
+					nc.parlist(nc.typedname("t")),
+					nc.block(
+						nc["local"](nc.typedname("nt"),nc.explist(nc.tableconstructor(nc.fieldlist()))),
+						nc.forgen(
+							nc.typednamelist(nc.typedname("k"), nc.typedname("v")),
+							nc.funccall("pairs", nc.args(nc.explist("t"))),
+							nc.block(
+								nc.assignment(
+									() => "=",
+									nc.varlist(nc.indexb("nt", "k")),
+									nc.explist(
+										cbody
+									)
+								)
+							)
+						),
+						nc["return"]("nt")
+					)
+				)),
+			),
+			nc.args(nc.explist(sourceTable:clone({ line = args.line })))
+		))
+	return mm
+end
+
 function Parser:primaryexp()
 	local pref = self:prefixexp()
 	return if not pref
@@ -509,7 +614,8 @@ function Parser:primaryexp()
 			self:acceptChain((_, _, nm) => self:node("indexsafe", n, nm), {"symbol", "?"}, {"symbol", "."}, "name") or
 			self:acceptChain((_, e) => self:node("indexb", n, e), {"symbol", "["}, "exp", {"symbol", "]"}) or
 			self:acceptChain((_, nm, a) => self:node("methodcall", n, nm, a), {"symbol", ":"}, "name", "args") or
-			self:acceptChain((a) => self:node("funccall", n, a), "args")
+			self:acceptChain((a) => self:node("funccall", n, a), "args") or
+			self:macroinvocation(n)
 		
 		if not nn then
 

@@ -180,6 +180,15 @@ end
 Note: cannot create your own macros at the moment.
 
 ```lua
-local tbl = { "word", "mate" }
-local m = map!(tbl, (w) => w:upper())
+local tbl = { "dog", "word", "mate" }
+
+-- extension macro; can be called as if it was a method
+local ntbl = tbl:map!((w) => w:upper())
+
+-- above line is equal to this
+local ntbl = map!(tbl, (w) => w:upper())
+
+-- extension macros can be chained
+local ntbl = tbl:map!((w) => w:upper()):filter!((w) => #w > 3)
+
 ```
