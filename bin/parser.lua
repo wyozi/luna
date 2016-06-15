@@ -43,7 +43,7 @@ end
 
 
 function Parser:error(text)
-	__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(text)=="string", "Invalid value for 'text'. Expected a 'string'")
 	local line, col = (self.nextToken and self.nextToken.line) or -1, (self.nextToken and self.nextToken.col) or -1
 	text = text .. " preceding tokens: "
 	for i = 2, 0, -1 do
@@ -54,7 +54,7 @@ function Parser:error(text)
 	error("[Luna Parser] " .. text .. " at line " .. line .. " col " .. col)
 end
 function Parser:expectedError(expected)
-	__L_as(__L_t(expected) == "string", "Parameter 'expected' must be a string")
+	__L_as(__L_t(expected)=="string", "Invalid value for 'expected'. Expected a 'string'")
 	local t = string.format("expected %s, got %s", expected, (self.nextToken and self.nextToken.type))
 	return self:error(t)
 end
@@ -63,14 +63,14 @@ node_meta.__index = node_meta
 node_meta.__type = "lunanode"
 
 function node_meta:cloneMeta(newType, merget)
-	__L_as(__L_t(newType) == "string", "Parameter 'newType' must be a string");__L_as(merget == nil or __L_t(merget) == "table", "Parameter 'merget' must be a table")
+	__L_as(__L_t(newType)=="string", "Invalid value for 'newType'. Expected a 'string'");__L_as(merget==nil or __L_t(merget)=="table", "Invalid value for 'merget'. Expected a 'table'")
 	local cloned = setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
 	if merget then for k, v in pairs(merget) do cloned[k] = v end end
 
 	return cloned
 end
 function node_meta:clone(merget)
-	__L_as(merget == nil or __L_t(merget) == "table", "Parameter 'merget' must be a table")
+	__L_as(merget==nil or __L_t(merget)=="table", "Invalid value for 'merget'. Expected a 'table'")
 	local cloned = setmetatable({  }, node_meta)
 	for k, v in pairs(self) do cloned[k] = v end
 	if merget then for k, v in pairs(merget) do cloned[k] = v end end
@@ -115,7 +115,7 @@ function node_meta:newCreator()
 end
 
 function Parser:node(type, ...)
-	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")
+	__L_as(__L_t(type)=="string", "Invalid value for 'type'. Expected a 'string'")
 	local n = setmetatable({ type = type, line = (self.curToken and self.curToken.line), col = (self.curToken and self.curToken.col) }, node_meta)
 	local args = { ... }
 
@@ -135,7 +135,7 @@ function Parser:nodeCreator(base)
 	return base:newCreator()
 end
 function Parser:token2node(token, prepend_t)
-	__L_as(token == nil or __L_t(token) == "lunatoken", "Parameter 'token' must be a lunatoken");__L_as(prepend_t == nil or __L_t(prepend_t) == "boolean", "Parameter 'prepend_t' must be a boolean")
+	__L_as(token==nil or __L_t(token)=="lunatoken", "Invalid value for 'token'. Expected a 'lunatoken'");__L_as(prepend_t==nil or __L_t(prepend_t)=="boolean", "Invalid value for 'prepend_t'. Expected a 'boolean'")
 	if not token then return nil end
 	local type = token.type
 	if prepend_t then 
@@ -147,23 +147,23 @@ function Parser:token2node(token, prepend_t)
 	return n
 end
 function Parser:accept(type, text)
-	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string");__L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(type)=="string", "Invalid value for 'type'. Expected a 'string'");__L_as(text==nil or __L_t(text)=="string", "Invalid value for 'text'. Expected a 'string'")
 	if (self.nextToken and self.nextToken.type) == type and (not text or self.nextToken.text == text) then return self:next() end
 end
 
 function Parser:expect(type, text)
-	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string");__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(type)=="string", "Invalid value for 'type'. Expected a 'string'");__L_as(__L_t(text)=="string", "Invalid value for 'text'. Expected a 'string'")
 	local n = self:accept(type, text)
 	if not n then return self:error("expected " .. type) end
 	return n
 end
 function Parser:checkEOF(text)
-	__L_as(__L_t(text) == "string", "Parameter 'text' must be a string")
+	__L_as(__L_t(text)=="string", "Invalid value for 'text'. Expected a 'string'")
 	if not self:isEOF() then return self:error(text) end
 end
 
 function Parser:acceptChain(fn, ...)
-	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
+	__L_as(__L_t(fn)=="function", "Invalid value for 'fn'. Expected a 'function'")
 	local rp = self:_createRestorePoint()
 	local line, col = (self.nextToken and self.nextToken.line), (self.nextToken and self.nextToken.col)
 
@@ -212,12 +212,12 @@ local chain_meta = {  }
 chain_meta.__index = chain_meta
 
 function chain_meta:insertParserFn(expected, fn, name)
-	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean");__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function");__L_as(name == nil or __L_t(name) == "string", "Parameter 'name' must be a string")
+	__L_as(__L_t(expected)=="boolean", "Invalid value for 'expected'. Expected a 'boolean'");__L_as(__L_t(fn)=="function", "Invalid value for 'fn'. Expected a 'function'");__L_as(name==nil or __L_t(name)=="string", "Invalid value for 'name'. Expected a 'string'")
 	table.insert(self.chain, { name = name or "unknown", expected = expected, fn = fn })
 	return self
 end
 function chain_meta:insertToken(expected, type, text)
-	__L_as(__L_t(expected) == "boolean", "Parameter 'expected' must be a boolean");__L_as(__L_t(type) == "string", "Parameter 'type' must be a string");__L_as(text == nil or __L_t(text) == "string", "Parameter 'text' must be a string");table.insert(self.chain, { name = type, expected = expected, fn = function() return self.parser:accept(type, text) end })
+	__L_as(__L_t(expected)=="boolean", "Invalid value for 'expected'. Expected a 'boolean'");__L_as(__L_t(type)=="string", "Invalid value for 'type'. Expected a 'string'");__L_as(text==nil or __L_t(text)=="string", "Invalid value for 'text'. Expected a 'string'");table.insert(self.chain, { name = type, expected = expected, fn = function() return self.parser:accept(type, text) end })
 	return self
 end
 function chain_meta:accept(a, b)
@@ -229,7 +229,7 @@ function chain_meta:expect(a, b)
 	return self:insertToken(true, a, b)
 end
 function chain_meta:done(fn)
-	__L_as(__L_t(fn) == "function", "Parameter 'fn' must be a function")
+	__L_as(__L_t(fn)=="function", "Invalid value for 'fn'. Expected a 'function'")
 	local parser = self.parser
 	local rp = parser:_createRestorePoint()
 	local line, col = (parser.nextToken and parser.nextToken.line), (parser.nextToken and parser.nextToken.col)
@@ -266,7 +266,7 @@ end
 
 
 function Parser:chain(name)
-	__L_as(__L_t(name) == "string", "Parameter 'name' must be a string")
+	__L_as(__L_t(name)=="string", "Invalid value for 'name'. Expected a 'string'")
 	return setmetatable({ name = name, parser = self, chain = {  } }, chain_meta)
 end
 function Parser:block()

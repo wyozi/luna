@@ -52,7 +52,7 @@ end
 
 
 function to_lua.processParListFuncBlock(parlist, funcbody)
-	__L_as(__L_t(parlist) == "lunanode", "Parameter 'parlist' must be a lunanode");__L_as(__L_t(funcbody) == "lunanode", "Parameter 'funcbody' must be a lunanode")
+	__L_as(__L_t(parlist)=="lunanode", "Invalid value for 'parlist'. Expected a 'lunanode'");__L_as(__L_t(funcbody)=="lunanode", "Invalid value for 'funcbody'. Expected a 'lunanode'")
 	local paramextras = {  }
 	for _, par in ipairs(parlist) do
 		local name, type, value
@@ -66,8 +66,7 @@ function to_lua.processParListFuncBlock(parlist, funcbody)
 		local pex = { var = name.text }
 
 		if type then 
-		pex.type = type[1].text
-		pex.nillable = type.isOptional end
+		pex.type = type end
 
 		if value then 
 		pex.value = value end
@@ -78,44 +77,31 @@ function to_lua.processParListFuncBlock(parlist, funcbody)
 
 
 	for i, tc in pairs(paramextras) do
-		__L_as(tc, "cannot destructure nil");local var, type, nillable, value = tc.var, tc.type, tc.nillable, tc.value
+		__L_as(tc, "cannot destructure nil");local var, type, value = tc.var, tc.type, tc.value
 
 		if type then 
-		local tcnode = parlist:cloneMeta("funccall")
-		tcnode[1] = tcnode:cloneMeta("identifier", { text = LUAFN_ASSERT })
-		local args = tcnode:cloneMeta("explist")
-		tcnode[2] = args
+		local nc = parlist:newCreator()
 
-		local typeChecker = parlist:cloneMeta("binop", {
-			parlist:cloneMeta("t_binop", { text = "==" }), 
-			parlist:cloneMeta("funccall", { parlist:cloneMeta("identifier", { text = LUAFN_TYPE }), parlist:cloneMeta("identifier", { text = var }) }), 
-			parlist:cloneMeta("literal", { text = "\"" .. type .. "\"" })
-		})
-		if nillable then 
-		local nilChecker = parlist:cloneMeta("binop", {
-			parlist:cloneMeta("t_binop", { text = "==" }), 
-			parlist:cloneMeta("identifier", { text = var }), 
-			parlist:cloneMeta("keyword", { text = "nil" })
-		})
-		args[1] = parlist:cloneMeta("binop", { parlist:cloneMeta("t_binop", { text = "or" }), nilChecker, typeChecker }) else 
-
-		args[1] = typeChecker end
+		local tcnode = nc.funccall(LUAFN_ASSERT, 
+		nc.explist(nc.typecheck(var, type), 
+		nc.literal({ text = [["Invalid value for ']] .. var .. [['. Expected a ']] .. type[1].text .. [['"]] })))
 
 
-		args[2] = parlist:cloneMeta("literal", { text = [["Parameter ']] .. var .. [[' must be a ]] .. type .. [["]] })
+
+
 
 		table.insert(funcbody, i, tcnode) end
 
 
 		if value then 
-		local as = parlist:cloneMeta("assignment")
+		local nc = parlist:newCreator()
+
+		local as = nc["if"](nc.binop(nc.t_binop({ text = "==" }), var, nc.keyword({ text = "nil" })), 
+		nc.block(nc.assignment(nc.t_assignop({ text = "=" }), var, value)))
 
 
-		value.line = nil
 
-		as[1] = as:cloneMeta("t_assignop", { text = "=" })
-		as[2] = as:cloneMeta("identifier", { text = var })
-		as[3] = as:cloneMeta("binop", { as:cloneMeta("t_binop", { text = "or" }), as[2], value })
+
 
 		table.insert(funcbody, i, as) end
 	end
@@ -171,14 +157,14 @@ end
 
 
 function luaBuffer:appendSpace(t)
-	__L_as(__L_t(t) == "string", "Parameter 't' must be a string")
+	__L_as(__L_t(t)=="string", "Invalid value for 't'. Expected a 'string'")
 	if not self.noExtraSpace then self:append(t) end
 end
 
 
 
 function luaBuffer:checkLastNode(pattern)
-	__L_as(__L_t(pattern) == "string", "Parameter 'pattern' must be a string")
+	__L_as(__L_t(pattern)=="string", "Invalid value for 'pattern'. Expected a 'string'")
 	local __ifa0_ln = self.buf[#self.buf]; if __ifa0_ln then local ln = __ifa0_ln
 	return not not ln:match(pattern) end
 end
@@ -192,7 +178,7 @@ luafier.__index = luafier
 luafier.__type = "luafier"
 
 function luafier.new(buf, opts)
-	__L_as(__L_t(buf) == "luabuf", "Parameter 'buf' must be a luabuf");__L_as(__L_t(opts) == "table", "Parameter 'opts' must be a table")
+	__L_as(__L_t(buf)=="luabuf", "Invalid value for 'buf'. Expected a 'luabuf'");__L_as(__L_t(opts)=="table", "Invalid value for 'opts'. Expected a 'table'")
 	return setmetatable({
 		buf = buf, 
 		opts = opts
@@ -229,7 +215,7 @@ end
 
 
 function luafier:writeList(list)
-	__L_as(__L_t(list) == "lunanode", "Parameter 'list' must be a lunanode")
+	__L_as(__L_t(list)=="lunanode", "Invalid value for 'list'. Expected a 'lunanode'")
 	local lastnode
 	for i, snode in ipairs(list) do
 		if i > 1 then self.buf:append(", ") end
@@ -244,7 +230,7 @@ function luafier:writeList(list)
 end
 
 function luafier:writeNode(node)
-	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode")
+	__L_as(__L_t(node)=="lunanode", "Invalid value for 'node'. Expected a 'lunanode'")
 	__L_as(self, "cannot destructure nil");local opts, buf = self.opts, self.buf
 
 	local toLua = (function(...) return self:writeNode(...) end)
@@ -514,8 +500,15 @@ function luafier:writeNode(node)
 	toLua(node[2]) elseif node.type == "typecheck" then 
 
 
+	__L_as(node, "cannot destructure nil");local var, type = node[1], node[2]
+
+	if type.isOptional then 
+	self:writeNode(node[1])
+	buf:append("==nil or ") end
+
+
 	buf:append(LUAFN_TYPE)
-	buf:append("(");toLua(node[1]);buf:append(")==\"");buf:append(node[2][1].text);buf:append("\"") elseif node.type == "parexp" then 
+	buf:append("(");self:writeNode(var);buf:append(")==\"");buf:append(type[1].text);buf:append("\"") elseif node.type == "parexp" then 
 
 	buf:append("(")
 	toLua(node[1]);buf:append(")") elseif node.type == "identifier" or node.type == "keyword" then 
@@ -537,7 +530,7 @@ end
 
 
 function luafier:writeForOfNode(node)
-	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode")
+	__L_as(__L_t(node)=="lunanode", "Invalid value for 'node'. Expected a 'lunanode'")
 	assert(node.type == "forof")
 	__L_as(self, "cannot destructure nil");local buf = self.buf
 	__L_as(node, "cannot destructure nil");local var, iter, b = node[1], node[2], node[3]
@@ -606,7 +599,7 @@ function luafier:writeForOfNode(node)
 	buf:append("end")
 end
 function luafier:writeLocalDestructorNode(node)
-	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode")
+	__L_as(__L_t(node)=="lunanode", "Invalid value for 'node'. Expected a 'lunanode'")
 	assert(node.type == "localdestructor")
 	__L_as(self, "cannot destructure nil");local buf = self.buf
 	__L_as(node, "cannot destructure nil");local destructor, target = node[1], node[2]
@@ -645,7 +638,7 @@ function luafier:writeLocalDestructorNode(node)
 end
 
 function luafier:writeMatchNode(node)
-	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode")
+	__L_as(__L_t(node)=="lunanode", "Invalid value for 'node'. Expected a 'lunanode'")
 	assert(node.type == "match")
 	__L_as(self, "cannot destructure nil");local buf = self.buf
 	local nc = node:newCreator()

@@ -66,8 +66,7 @@ function to_lua.processParListFuncBlock(parlist: lunanode, funcbody: lunanode)
 			local pex = {var = name.text}
 
 			if type then
-				pex.type = type[1].text
-				pex.nillable = type.isOptional
+				pex.type = type
 			end
 			if value then
 				pex.value = value
@@ -78,45 +77,32 @@ function to_lua.processParListFuncBlock(parlist: lunanode, funcbody: lunanode)
 	end
 
 	for i,tc of paramextras do
-		local {var, type, nillable, value} = tc
+		local {var, type, value} = tc
 
 		if type then
-			local tcnode = parlist:cloneMeta("funccall")
-			tcnode[1] = tcnode:cloneMeta("identifier", { text = LUAFN_ASSERT })
-			local args = tcnode:cloneMeta("explist")
-			tcnode[2] = args
+			local nc = parlist:newCreator()
 
-			local typeChecker = parlist:cloneMeta("binop", {
-				parlist:cloneMeta("t_binop", { text = "==" }),
-				parlist:cloneMeta("funccall", { parlist:cloneMeta("identifier", { text = LUAFN_TYPE }), parlist:cloneMeta("identifier", { text = var }) }),
-				parlist:cloneMeta("literal", { text = "\"" .. type .. "\"" })
-			})
-			if nillable then
-				local nilChecker = parlist:cloneMeta("binop", {
-					parlist:cloneMeta("t_binop", { text = "==" }),
-					parlist:cloneMeta("identifier", { text = var }),
-					parlist:cloneMeta("keyword", { text = "nil" })
-				})
-				args[1] = parlist:cloneMeta("binop", {parlist:cloneMeta("t_binop", { text = "or" }), nilChecker, typeChecker })
-			else
-				args[1] = typeChecker
-			end
+			local tcnode = nc.funccall(
+				LUAFN_ASSERT,
+				nc.explist(
+					nc.typecheck(var, type),
+					nc.literal({text = [["Invalid value for ']] .. var .. [['. Expected a ']] .. type[1].text .. [['"]] })
+				)
+			)
 
-			args[2] = parlist:cloneMeta("literal", { text = [["Parameter ']] .. var .. [[' must be a ]] .. type .. [["]] })
-			
 			table.insert(funcbody, i, tcnode)
 		end
 
 		if value then
-			local as = parlist:cloneMeta("assignment")
+			local nc = parlist:newCreator()
+
+			local as = nc["if"](
+				nc.binop(nc.t_binop({text = "=="}), var, nc.keyword({text = "nil"})),
+				nc.block(
+					nc.assignment(nc.t_assignop({text = "="}), var, value)
+				)
+			)
 			
-			-- hack; should clone the value node first
-			value.line = nil
-
-			as[1] = as:cloneMeta("t_assignop", { text = "=" })
-			as[2] = as:cloneMeta("identifier", { text = var })
-			as[3] = as:cloneMeta("binop", { as:cloneMeta("t_binop", { text = "or" }), as[2], value })
-
 			table.insert(funcbody, i, as)
 		end
 	end
@@ -514,7 +500,14 @@ function luafier:writeNode(node: lunanode)
 		toLua(node[2])
 
 	elseif node.type == "typecheck" then
-		buf:append(LUAFN_TYPE); buf:append("("); toLua(node[1]); buf:append(")==\""); buf:append(node[2][1].text); buf:append("\"")
+		local [var, type] = node
+
+		if type.isOptional then
+			self:writeNode(node[1])
+			buf:append("==nil or ")
+		end
+
+		buf:append(LUAFN_TYPE); buf:append("("); self:writeNode(var); buf:append(")==\""); buf:append(type[1].text); buf:append("\"")
 
 	elseif node.type == "parexp" then
 		buf:append("("); toLua(node[1]); buf:append(")")
