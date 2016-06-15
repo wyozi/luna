@@ -82,7 +82,7 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 
 		if type then 
 		pex.type = type[1].text
-		pex.nillable = type[2] end
+		pex.nillable = type.isOptional end
 
 		if value then 
 		pex.value = value end
@@ -102,17 +102,17 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 		tcnode[2] = args
 
 		local typeChecker = parlist:cloneMeta("binop", {
-			"==", 
+			parlist:cloneMeta("t_binop", { text = "==" }), 
 			parlist:cloneMeta("funccall", { parlist:cloneMeta("identifier", { text = LUAFN_TYPE }), parlist:cloneMeta("identifier", { text = var }) }), 
 			parlist:cloneMeta("literal", { text = "\"" .. type .. "\"" })
 		})
 		if nillable then 
 		local nilChecker = parlist:cloneMeta("binop", {
-			"==", 
+			parlist:cloneMeta("t_binop", { text = "==" }), 
 			parlist:cloneMeta("identifier", { text = var }), 
 			parlist:cloneMeta("keyword", { text = "nil" })
 		})
-		args[1] = parlist:cloneMeta("binop", { "or", nilChecker, typeChecker }) else 
+		args[1] = parlist:cloneMeta("binop", { parlist:cloneMeta("t_binop", { text = "or" }), nilChecker, typeChecker }) else 
 
 		args[1] = typeChecker end
 
@@ -128,9 +128,9 @@ function luafier.processParListFuncBlock(parlist, funcbody)
 
 		value.line = nil
 
-		as[1] = "="
+		as[1] = as:cloneMeta("t_assignop", { text = "=" })
 		as[2] = as:cloneMeta("identifier", { text = var })
-		as[3] = as:cloneMeta("binop", { "or", as[2], value })
+		as[3] = as:cloneMeta("binop", { as:cloneMeta("t_binop", { text = "or" }), as[2], value })
 
 		table.insert(funcbody, i, as) end
 	end
@@ -352,7 +352,7 @@ function luafier.internalToLua(node, opts, buf)
 
 	buf:append("end") elseif node.type == "assignment" then 
 
-	local op = node[1]
+	local op = node[1].text
 
 	if op == "=" then 
 	toLua(node[2])
@@ -536,7 +536,7 @@ function luafier.internalToLua(node, opts, buf)
 	buf:append(" end)") elseif node.type == "binop" then 
 
 	toLua(node[2])
-	buf:appendSpace(" ");buf:append(node[1])
+	buf:appendSpace(" ");buf:append(node[1].text)
 	local lndiff = getLinenoDiff(node[2], node[3])
 
 	if lndiff and lndiff > 0 then 
@@ -547,15 +547,16 @@ function luafier.internalToLua(node, opts, buf)
 	toLua(node[3]) elseif node.type == "unop" then 
 
 
-	buf:append(node[1])
-	if node[1] == "not" then 
+	local op = node[1].text
+	buf:append(op)
+	if op == "not" then 
 	buf:append(" ") end
 
 	toLua(node[2]) elseif node.type == "typecheck" then 
 
 
 	buf:append(LUAFN_TYPE)
-	buf:append("(");toLua(node[1]);buf:append(")==\"");buf:append(node[2].text);buf:append("\"") elseif node.type == "parexp" then 
+	buf:append("(");toLua(node[1]);buf:append(")==\"");buf:append(node[2][1].text);buf:append("\"") elseif node.type == "parexp" then 
 
 	buf:append("(")
 	toLua(node[1]);buf:append(")") elseif node.type == "identifier" or node.type == "keyword" then 

@@ -105,15 +105,16 @@ local nodecreator_node_meta = {
 	__call = function(t, ...)
 		local n = t.n
 		for i,c in ipairs{...} do
+			local key, val = nil, c
+
 			if c is string then
-				local str = c
-				c = n:cloneMeta("identifier")
-				c.text = str
+				val = n:cloneMeta("identifier")
+				val.text = c
 			elseif type(c) == "function" then
-				c = c()
+				val, key = c()
 			end
 
-			n[i] = c
+			n[key or i] = val
 		end
 		return n
 	end
@@ -127,10 +128,15 @@ function Parser:nodeCreator(base)
 	return setmetatable({ base = base }, nodecreator_meta)
 end
 
-function Parser:token2node(token: lunatoken?)
+function Parser:token2node(token: lunatoken?, prepend_t: boolean?)
 	return nil if not token
 
-	local n = self:node(token.type)
+	local type = token.type
+	if prepend_t then
+		type = string.format("t_" .. type)
+	end
+
+	local n = self:node(type)
 	n.text, n.line, n.col = token.text, token.line, token.col
 	return n
 end
@@ -298,7 +304,7 @@ end
 
 function Parser:stat()
 	local function assignment(varlist, op, explist)
-		return self:node("assignment", op.text, varlist, explist)
+		return self:node("assignment", self:token2node(op), varlist, explist)
 	end
 	local function fnstmt(_, name, body)
 		return self:node("globalfunc", name, body)
@@ -481,19 +487,27 @@ end
 
 function Parser:typedname()
 	if local i = self:name() then
-		return self:node("typedname", i, self:type())
+		local typedname = self:node("typedname", i)
+		if self:accept("symbol", ":") then
+			if local type = self:type() then
+				typedname[2] = type
+			else
+				self:expectedError("type")
+			end
+		end
+		return typedname
 	end
 end
 
 function Parser:type()
-	if self:accept("symbol", ":") then
-		-- function is an unfortunate keyword, but we want it to be valid type name; thus this hack
-		local n = self:name() or self:token2node(self:accept("keyword", "function"))
-		return if not n
+	-- function is an unfortunate keyword, but we want it to be valid type name; thus this hack
+	local type = self:name() or self:token2node(self:accept("keyword", "function"))
+	return if not type
 
-		local isOptional = self:accept("symbol", "?")
-		return self:node("type", n, not not isOptional)
-	end
+	local isOptional = self:accept("symbol", "?")
+	local node = self:node("type", type)
+	node.isOptional = not not isOptional
+	return node
 end
 
 function Parser:typednamelist()
@@ -584,7 +598,7 @@ function Parser:macroexpand_map(args)
 							nc.funccall("pairs", nc.args(nc.explist("t"))),
 							nc.block(
 								nc.assignment(
-									() => "=",
+									nc.t_assignop(() => do return "=", "text" end),
 									nc.varlist(nc.indexb("nt", "k")),
 									nc.explist(
 										cbody
@@ -651,8 +665,9 @@ function Parser:simpleexp()
 end
 
 function Parser:subexp()
-	local unop = self:accept("unop") or self:accept("binop", "-")
-	return self:node("unop", unop.text, self:subexp()) if unop
+	if local unop = self:accept("unop") or self:accept("binop", "-") then
+		return self:node("unop", self:token2node(unop), self:subexp())
+	end
 
 	local e = self:simpleexp()
 
@@ -664,14 +679,14 @@ function Parser:subexp()
 				self:error("expected right side of binop")
 			end
 
-			local node = self:node("binop", b.text, e, e2)
+			local node = self:node("binop", self:token2node(b), e, e2)
 			node.line = e.line
 			node.col = e.col
 			return node
 		end
 
 		-- check if it's a type check
-		if local check = self:chain("typecheck"):accept("identifier", "is"):expect("identifier"):done((_, typename) => typename) then
+		if local check = self:chain("typecheck"):accept("identifier", "is"):expect(self::type):done((_, type) => type) then
 			return self:node("typecheck", e, check)
 		end
 	end

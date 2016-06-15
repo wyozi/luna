@@ -105,15 +105,16 @@ local nodecreator_node_meta = {
 	__call = function (t, ...)
 		local n = t.n
 		for i, c in ipairs({ ... }) do
+			local key, val = nil, c
+
 			if __L_t(c)=="string" then 
-			local str = c
-			c = n:cloneMeta("identifier")
-			c.text = str elseif type(c) == "function" then 
+			val = n:cloneMeta("identifier")
+			val.text = c elseif type(c) == "function" then 
 
-			c = c() end
+			val, key = c() end
 
 
-			n[i] = c
+			n[key or i] = val
 		end
 		return n
 	end
@@ -127,10 +128,15 @@ function Parser:nodeCreator(base)
 	return setmetatable({ base = base }, nodecreator_meta)
 end
 
-function Parser:token2node(token)
-	__L_as(token == nil or __L_t(token) == "lunatoken", "Parameter 'token' must be a lunatoken")
+function Parser:token2node(token, prepend_t)
+	__L_as(token == nil or __L_t(token) == "lunatoken", "Parameter 'token' must be a lunatoken");__L_as(prepend_t == nil or __L_t(prepend_t) == "boolean", "Parameter 'prepend_t' must be a boolean")
 	if not token then return nil end
-	local n = self:node(token.type)
+	local type = token.type
+	if prepend_t then 
+	type = string.format("t_" .. type) end
+
+
+	local n = self:node(type)
 	n.text, n.line, n.col = token.text, token.line, token.col
 	return n
 end
@@ -298,7 +304,7 @@ end
 
 function Parser:stat()
 	local function assignment(varlist, op, explist)
-		return self:node("assignment", op.text, varlist, explist)
+		return self:node("assignment", self:token2node(op), varlist, explist)
 	end
 	local function fnstmt(_, name, body)
 		return self:node("globalfunc", name, body)
@@ -481,20 +487,28 @@ end
 
 function Parser:typedname()
 	local __ifa0_i = self:name(); if __ifa0_i then local i = __ifa0_i
-	return self:node("typedname", i, self:type()) end
+	local typedname = self:node("typedname", i)
+	if self:accept("symbol", ":") then 
+	local __ifa1_type = self:type(); if __ifa1_type then local type = __ifa1_type
+	typedname[2] = type else 
+
+	self:expectedError("type") end end
+
+
+	return typedname end
 end
 
 
 function Parser:type()
-	if self:accept("symbol", ":") then 
 
-	local n = self:name() or self:token2node(self:accept("keyword", "function"))
-	if not n then return  end
+	local type = self:name() or self:token2node(self:accept("keyword", "function"))
+	if not type then return  end
 
 	local isOptional = self:accept("symbol", "?")
-	return self:node("type", n, not not isOptional) end
+	local node = self:node("type", type)
+	node.isOptional = not not isOptional
+	return node
 end
-
 
 function Parser:typednamelist()
 	local names = self:node("typednamelist")
@@ -576,7 +590,15 @@ function Parser:macroexpand_map(args)
 	nc.block(nc["local"](nc.typedname("nt"), nc.explist(nc.tableconstructor(nc.fieldlist()))), 
 	nc.forgen(nc.typednamelist(nc.typedname("k"), nc.typedname("v")), 
 	nc.funccall("pairs", nc.args(nc.explist("t"))), 
-	nc.block(nc.assignment(function() return "=" end, 
+	nc.block(nc.assignment(nc.t_assignop(function() 
+
+
+
+
+
+
+
+	return "=", "text" end), 
 	nc.varlist(nc.indexb("nt", "k")), 
 	nc.explist(cbody)))), 
 
@@ -588,14 +610,6 @@ function Parser:macroexpand_map(args)
 
 
 	nc.args(nc.explist(sourceTable:clone({ line = args.line })))))
-
-
-
-
-
-
-
-
 
 
 	return mm
@@ -651,27 +665,28 @@ end
 
 
 function Parser:subexp()
-	local unop = self:accept("unop") or self:accept("binop", "-")
-	if unop then return self:node("unop", unop.text, self:subexp()) end
+	local __ifa2_unop = self:accept("unop") or self:accept("binop", "-"); if __ifa2_unop then local unop = __ifa2_unop
+	return self:node("unop", self:token2node(unop), self:subexp()) end
+
 
 	local e = self:simpleexp()
 
 	if e then 
 
-	local __ifa1_b = self:accept("binop"); if __ifa1_b then local b = __ifa1_b
+	local __ifa3_b = self:accept("binop"); if __ifa3_b then local b = __ifa3_b
 	local e2 = self:subexp()
 	if not e2 then 
 	self:error("expected right side of binop") end
 
 
-	local node = self:node("binop", b.text, e, e2)
+	local node = self:node("binop", self:token2node(b), e, e2)
 	node.line = e.line
 	node.col = e.col
 	return node end
 
 
 
-	local __ifa2_check = self:chain("typecheck"):accept("identifier", "is"):expect("identifier"):done(function(_, typename) return typename end); if __ifa2_check then local check = __ifa2_check
+	local __ifa4_check = self:chain("typecheck"):accept("identifier", "is"):expect((function(...) return self:type(...) end)):done(function(_, type) return type end); if __ifa4_check then local check = __ifa4_check
 	return self:node("typecheck", e, check) end end
 
 
@@ -713,9 +728,9 @@ function Parser:parlist()
 	local params = self:node("parlist")
 
 	local function nextarg()
-		local __ifa3_n = self:typedname(); if __ifa3_n then local n = __ifa3_n
+		local __ifa5_n = self:typedname(); if __ifa5_n then local n = __ifa5_n
 
-		local __ifa4_value = self:chain("default value"):accept("assignop", "="):expect((function(...) return self:exp(...) end)):done(function(_, e) return e end); if __ifa4_value then local value = __ifa4_value
+		local __ifa6_value = self:chain("default value"):accept("assignop", "="):expect((function(...) return self:exp(...) end)):done(function(_, e) return e end); if __ifa6_value then local value = __ifa6_value
 		return self:node("paramwithvalue", n, value) end
 
 		return n end
@@ -725,7 +740,7 @@ function Parser:parlist()
 		return self:varargs()
 	end
 
-	local __ifa5_param = nextarg(); if __ifa5_param then local param = __ifa5_param
+	local __ifa7_param = nextarg(); if __ifa7_param then local param = __ifa7_param
 
 
 	local vargsAdded = false
