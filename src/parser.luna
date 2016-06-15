@@ -391,18 +391,34 @@ function Parser:stat_for()
 	local function forgen(_,names,_,iter,_,b)
 		return self:node("forgen", names, iter, b)
 	end
-	local function forof(_,var,_,iter,_,b)
-		return self:node("forof", var, iter, b)
-	end
 
 	return
 		self:acceptChain(fornum_step, {"keyword", "for"}, "name", {"assignop", "="}, "exp", {"symbol", ","}, "exp", {"symbol", ","}, "exp", {"keyword", "do"}, "block") or
 		self:acceptChain(fornum, {"keyword", "for"}, "name", {"assignop", "="}, "exp", {"symbol", ","}, "exp", {"keyword", "do"}, "block") or
 		self:acceptChain(forgen, {"keyword", "for"}, "typednamelist", {"keyword", "in"}, "exp", {"keyword", "do"}, "block") or
-		self:acceptChain(forof, {"keyword", "for"}, "for_var", {"identifier", "of"} --[[TODO make 'of' a keyword?]], "exp", {"keyword", "do"}, "block")
+		
+		self:stat_for_of()
 end
-function Parser:for_var()
-	return self:name() or self:destructor()
+function Parser:stat_for_of()
+	return
+		self:acceptChain((_,v,_,i,_,b) => self:node("forof", v, i, b), {"keyword", "for"}, "for_of_var", {"identifier", "of"}, "exp", {"keyword", "do"}, "block") or
+		self:acceptChain((_,v,_,i,_,b) => do
+			local n = self:node("forof", v, i, b)
+			n.iterArray = true
+			return n
+		end, {"keyword", "for"}, "for_of_var", {"identifier", "ofi"}, "exp", {"keyword", "do"}, "block") or
+		self:acceptChain((_,v,_,_,i,_,b) => do
+			local n = self:node("forof", v, i, b)
+			n.nillableColl = true
+			return n
+		end, {"keyword", "for"}, "for_of_var", {"identifier", "of"}, {"symbol", "?"}, "exp", {"keyword", "do"}, "block")
+end
+function Parser:for_of_var()
+	local index = self:acceptChain((n) => n, "name", {"symbol", ","})
+
+	if local value = self:name() or self:destructor() then
+		return self:node("forofvar", index, value)
+	end
 end
 function Parser:stat_local()
 	local function localstmt(_, namelist)

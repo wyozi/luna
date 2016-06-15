@@ -506,23 +506,38 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 	elseif node.type == "forof" then
 		local [var, iter, b] = node
 
+		local [vark, varv] = var
+
 		local destr
-		if var.type == "tabledestructor" or var.type == "arraydestructor" then
+		if varv.type == "tabledestructor" or varv.type == "arraydestructor" then
 			local varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
 			
 			-- create a new identifier that will replace destructor
-			local newVar = var:cloneMeta("identifier")
-			newVar.text = varName
+			local newVarv = varv:cloneMeta("identifier")
+			newVarv.text = varName
 
 			-- create a local destructor that targets newly named variable
-			destr = var:cloneMeta("localdestructor")
-			destr[1] = var
-			destr[2] = newVar
+			destr = varv:cloneMeta("localdestructor")
+			destr[1] = varv
+			destr[2] = newVarv
 
-			var = newVar
+			varv = newVarv
 		end
 
-		buf:append("for _,"); toLua(var); buf:append(" in pairs("); toLua(iter); buf:append(") do");
+		buf:append("for ")
+		if vark then
+			toLua(vark)
+		else
+			buf:append("_")
+		end
+		buf:append(","); buf:appendSpace(" "); toLua(varv); buf:append(" in ")
+		if node.iterArray then
+			buf:append("ipairs")
+		else
+			buf:append("pairs")
+		end
+		buf:append("("); toLua(iter); buf:append(") do")
+
 		wrapIndent(iter, b, function()
 			if destr then toLua(destr) end
 			toLua(b)

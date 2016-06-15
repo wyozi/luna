@@ -391,19 +391,35 @@ function Parser:stat_for()
 	local function forgen(_, names, _, iter, _, b)
 		return self:node("forgen", names, iter, b)
 	end
-	local function forof(_, var, _, iter, _, b)
-		return self:node("forof", var, iter, b)
-	end
 
 	return self:acceptChain(fornum_step, { "keyword", "for" }, "name", { "assignop", "=" }, "exp", { "symbol", "," }, "exp", { "symbol", "," }, "exp", { "keyword", "do" }, "block") or
 	self:acceptChain(fornum, { "keyword", "for" }, "name", { "assignop", "=" }, "exp", { "symbol", "," }, "exp", { "keyword", "do" }, "block") or
 	self:acceptChain(forgen, { "keyword", "for" }, "typednamelist", { "keyword", "in" }, "exp", { "keyword", "do" }, "block") or
-	self:acceptChain(forof, { "keyword", "for" }, "for_var", { "identifier", "of" }, "exp", { "keyword", "do" }, "block")
+
+	self:stat_for_of()
 end
 
-function Parser:for_var()
-	return self:name() or self:destructor()
+function Parser:stat_for_of()
+	return self:acceptChain(function(_, v, _, i, _, b) return self:node("forof", v, i, b) end, { "keyword", "for" }, "for_of_var", { "identifier", "of" }, "exp", { "keyword", "do" }, "block") or
+	self:acceptChain(function(_, v, _, i, _, b) 
+
+	local n = self:node("forof", v, i, b)
+	n.iterArray = true
+	return n end, 
+	{ "keyword", "for" }, "for_of_var", { "identifier", "ofi" }, "exp", { "keyword", "do" }, "block") or
+	self:acceptChain(function(_, v, _, _, i, _, b) 
+	local n = self:node("forof", v, i, b)
+	n.nillableColl = true
+	return n end, 
+	{ "keyword", "for" }, "for_of_var", { "identifier", "of" }, { "symbol", "?" }, "exp", { "keyword", "do" }, "block")
 end
+function Parser:for_of_var()
+	local index = self:acceptChain(function(n) return n end, "name", { "symbol", "," })
+
+	local __ifa0_value = self:name() or self:destructor(); if __ifa0_value then local value = __ifa0_value
+	return self:node("forofvar", index, value) end
+end
+
 function Parser:stat_local()
 	local function localstmt(_, namelist)
 		local explist
@@ -528,10 +544,10 @@ function Parser:name()
 end
 
 function Parser:typedname()
-	local __ifa0_i = self:name(); if __ifa0_i then local i = __ifa0_i
+	local __ifa1_i = self:name(); if __ifa1_i then local i = __ifa1_i
 	local typedname = self:node("typedname", i)
 	if self:accept("symbol", ":") then 
-	local __ifa1_type = self:type(); if __ifa1_type then local type = __ifa1_type
+	local __ifa2_type = self:type(); if __ifa2_type then local type = __ifa2_type
 	typedname[2] = type else 
 
 	self:expectedError("type") end end
@@ -707,7 +723,7 @@ end
 
 
 function Parser:subexp()
-	local __ifa2_unop = self:accept("unop") or self:accept("binop", "-"); if __ifa2_unop then local unop = __ifa2_unop
+	local __ifa3_unop = self:accept("unop") or self:accept("binop", "-"); if __ifa3_unop then local unop = __ifa3_unop
 	return self:node("unop", self:token2node(unop), self:subexp()) end
 
 
@@ -715,7 +731,7 @@ function Parser:subexp()
 
 	if e then 
 
-	local __ifa3_b = self:accept("binop"); if __ifa3_b then local b = __ifa3_b
+	local __ifa4_b = self:accept("binop"); if __ifa4_b then local b = __ifa4_b
 	local e2 = self:subexp()
 	if not e2 then 
 	self:error("expected right side of binop") end
@@ -728,7 +744,7 @@ function Parser:subexp()
 
 
 
-	local __ifa4_check = self:chain("typecheck"):accept("identifier", "is"):expect((function(...) return self:type(...) end)):done(function(_, type) return type end); if __ifa4_check then local check = __ifa4_check
+	local __ifa5_check = self:chain("typecheck"):accept("identifier", "is"):expect((function(...) return self:type(...) end)):done(function(_, type) return type end); if __ifa5_check then local check = __ifa5_check
 	return self:node("typecheck", e, check) end end
 
 
@@ -770,9 +786,9 @@ function Parser:parlist()
 	local params = self:node("parlist")
 
 	local function nextarg()
-		local __ifa5_n = self:typedname(); if __ifa5_n then local n = __ifa5_n
+		local __ifa6_n = self:typedname(); if __ifa6_n then local n = __ifa6_n
 
-		local __ifa6_value = self:chain("default value"):accept("assignop", "="):expect((function(...) return self:exp(...) end)):done(function(_, e) return e end); if __ifa6_value then local value = __ifa6_value
+		local __ifa7_value = self:chain("default value"):accept("assignop", "="):expect((function(...) return self:exp(...) end)):done(function(_, e) return e end); if __ifa7_value then local value = __ifa7_value
 		return self:node("paramwithvalue", n, value) end
 
 		return n end
@@ -782,7 +798,7 @@ function Parser:parlist()
 		return self:varargs()
 	end
 
-	local __ifa7_param = nextarg(); if __ifa7_param then local param = __ifa7_param
+	local __ifa8_param = nextarg(); if __ifa8_param then local param = __ifa8_param
 
 
 	local vargsAdded = false

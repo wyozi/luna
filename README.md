@@ -128,6 +128,9 @@ print(first, second)
 
 Note: destructuring within loop variable is only supported in `for of` loops at the moment.
 
+`of` uses `pairs` internally.  
+`ofi` uses `ipairs` internally.
+
 ```lua
 local people = { { name = "Mike", age = 25 }, { name = "John", age = 47 } }
 for {name, age} of people do
@@ -135,8 +138,8 @@ for {name, age} of people do
 end
 
 local vecs = { { "a", "b" }, { "o", "p" } }
-for [first, second] of vecs do
-	print(first, second)
+for i, [first, second] ofi vecs do
+	print("vec #" .. i .. ":", first, second)
 end
 ```
 

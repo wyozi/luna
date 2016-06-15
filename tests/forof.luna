@@ -1,11 +1,15 @@
-for x of {"a", "b"} do
-end
-
 local cats = {
 	{ name = "Doge", age = 12 },
 	{ name = "Dogger", age = 6 },
 	{ name = "Pupper", age = 1 }
 }
-for {name, age} of cats do
-	--print("Cat ", name, " is ", age, " years old")
+for i,{name, age} of cats do
+	assert(name == cats[i].name)
+	assert(age == cats[i].age)
+end
+
+local arr = { "hello", "world" }
+for k,v of arr do
+end
+for i,v ofi arr do
 end

@@ -506,29 +506,44 @@ function luafier.internalToLua(node, opts, buf)
 	true);buf:append("end") elseif node.type == "forof" then 
 	__L_as(node, "cannot destructure nil");local var, iter, b = node[1], node[2], node[3]
 
+	__L_as(var, "cannot destructure nil");local vark, varv = var[1], var[2]
+
 	local destr
-	if var.type == "tabledestructor" or var.type == "arraydestructor" then 
+	if varv.type == "tabledestructor" or varv.type == "arraydestructor" then 
 	local varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
 
 
-	local newVar = var:cloneMeta("identifier")
-	newVar.text = varName
+	local newVarv = varv:cloneMeta("identifier")
+	newVarv.text = varName
 
 
-	destr = var:cloneMeta("localdestructor")
-	destr[1] = var
-	destr[2] = newVar
+	destr = varv:cloneMeta("localdestructor")
+	destr[1] = varv
+	destr[2] = newVarv
 
-	var = newVar end
+	varv = newVarv end
 
 
-	buf:append("for _,")
-	toLua(var);buf:append(" in pairs(");toLua(iter);buf:append(") do")
+	buf:append("for ")
+	if vark then 
+	toLua(vark) else 
+
+	buf:append("_") end
+
+	buf:append(",")
+	buf:appendSpace(" ");toLua(varv);buf:append(" in ")
+	if node.iterArray then buf:append("ipairs") else 
+
+	buf:append("pairs") end
+
+	buf:append("(")
+	toLua(iter);buf:append(") do")
 	wrapIndent(iter, b, function ()
 		if destr then toLua(destr) end
 		toLua(b)
 	end, 
-	true);buf:append("end") elseif node.type == "methodref" then 
+	true)
+	buf:append("end") elseif node.type == "methodref" then 
 
 	buf:append("(function(...) return ")
 	toLua(node[1])
