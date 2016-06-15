@@ -2,3 +2,6 @@ local f = (a: function, b: string) => true
 
 -- short funcs with expression return type do not support multiple return values
 f(() => 42, "hello", 12) 
+
+local simple = w => w:upper()
+assert(simple("hey") == "HEY")

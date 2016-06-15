@@ -715,14 +715,7 @@ function Parser:primaryexp()
 end
 
 function Parser:simpleexp()
-	-- check if it's a short function
-	local shortFn = self:chain("shortfunc")
-		:accept("symbol", "("):accept(self::parlist, "parameters"):accept("symbol", ")"):accept("symbol", "=>")
-		:expect(self::sfuncbody, "function body")
-		:done((_,p,_,_,b) => self:node("sfunc", p, b))
-	return shortFn if shortFn
-
-	return
+	local n =
 		self:token2node(self:accept("keyword", "nil")) or
 		self:token2node(self:accept("keyword", "false")) or
 		self:token2node(self:accept("keyword", "true")) or
@@ -730,8 +723,20 @@ function Parser:simpleexp()
 		self:token2node(self:accept("literal")) or
 		self:varargs() or
 		self:func() or
+		self:sfunc() or
 		self:tableconstructor() or
 		self:primaryexp()
+
+	return n if n
+end
+
+function Parser:sfunc()
+	return
+		self:chain("shortfunc")
+			:accept(self::sfuncparams)
+			:accept("symbol", "=>")
+			:expect(self::sfuncbody, "function body")
+			:done((p,_,b) => self:node("sfunc", p, b))
 end
 
 function Parser:subexp()
@@ -866,6 +871,17 @@ function Parser:field()
 end
 function Parser:fieldsep()
 	return self:accept("symbol", ",") or self:accept("symbol", ";")
+end
+
+-- Parameters of a short hand function
+-- Either normal parameter list or a single typedname
+function Parser:sfuncparams()
+	if local n = self:name() then
+		return self:node("parlist", n)
+	end
+
+	return
+		self:acceptChain((_,parl,_) => parl, {"symbol", "("}, "parlist", {"symbol", ")"})
 end
 
 -- Body of a short hand function

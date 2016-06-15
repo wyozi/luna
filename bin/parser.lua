@@ -715,23 +715,28 @@ end
 
 
 function Parser:simpleexp()
-
-	local shortFn = self:chain("shortfunc"):accept("symbol", "("):accept((function(...) return self:parlist(...) end), "parameters"):accept("symbol", ")"):accept("symbol", "=>"):expect((function(...) return self:sfuncbody(...) end), "function body"):done(function(_, p, _, _, b) return self:node("sfunc", p, b) end)
-
-
-
-	if shortFn then return shortFn end
-
-	return self:token2node(self:accept("keyword", "nil")) or
+	local n = self:token2node(self:accept("keyword", "nil")) or
 	self:token2node(self:accept("keyword", "false")) or
 	self:token2node(self:accept("keyword", "true")) or
 	self:token2node(self:accept("number")) or
 	self:token2node(self:accept("literal")) or
 	self:varargs() or
 	self:func() or
+	self:sfunc() or
 	self:tableconstructor() or
 	self:primaryexp()
+
+
+	if n then return n end
 end
+
+function Parser:sfunc()
+	return self:chain("shortfunc"):accept((function(...) return self:sfuncparams(...) end)):accept("symbol", "=>"):expect((function(...) return self:sfuncbody(...) end), "function body"):done(function(p, _, b) return self:node("sfunc", p, b) end)
+end
+
+
+
+
 
 
 function Parser:subexp()
@@ -867,6 +872,17 @@ end
 function Parser:fieldsep()
 	return self:accept("symbol", ",") or self:accept("symbol", ";")
 end
+
+
+
+function Parser:sfuncparams()
+	local __ifa9_n = self:name(); if __ifa9_n then local n = __ifa9_n
+	return self:node("parlist", n) end
+
+
+	return self:acceptChain(function(_, parl, _) return parl end, { "symbol", "(" }, "parlist", { "symbol", ")" })
+end
+
 
 
 

@@ -48,8 +48,8 @@ assert(x == nil) -- no longer in scope
 #### Shorthand function syntax (implemented: ✔)
 
 ```lua
-local fn1 = (name) => "Hello " .. name
-local fn2 = (age) => do
+local fn1 = name => "Hello " .. name
+local fn2 = (age: number) => do
 	print("You are " .. age .. " years old")
 end
 
