@@ -473,7 +473,7 @@ function Parser:matchblock()
 	local stat = self:stat()
 	if not cond then self:expectedError("match statement") end
 
-	table.insert(block, self:node("matcharm", cond, stat)) end
+	table.insert(block, self:node("matcharm", cond, extraif, stat)) end
 
 
 	return block
@@ -483,6 +483,7 @@ function Parser:matchcond()
 	self:token2node(self:accept("keyword", "false")) or
 	self:token2node(self:accept("keyword", "true")) or
 	self:acceptChain(function(low, _, high) return self:node("range", self:token2node(low), self:token2node(high)) end, { "number" }, { "binop", ".." }, { "number" }) or
+	self:typedname() or
 	self:token2node(self:accept("number")) or
 	self:token2node(self:accept("literal")) or
 	self:token2node(self:accept("identifier", "_"))

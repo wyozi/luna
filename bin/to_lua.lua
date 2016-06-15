@@ -584,7 +584,16 @@ function luafier.internalToLua(node, opts, buf)
 
 	local mapCond = function(cond) 
 	if cond.type == "identifier" and cond.text == "_" then 
-	return nc.keyword({ text = "true" }) elseif cond.type == "range" then 
+	return nc.keyword({ text = "true" }) elseif cond.type == "typedname" then 
+
+	__L_as(cond, "cannot destructure nil");local name, type = cond[1], cond[2]
+	if type then 
+	return nc.typecheck(cond[1].text, nc.type(cond[2][1].text)) else 
+
+
+	return nc.keyword({ text = "true" }) end elseif cond.type == "range" then 
+
+
 
 	__L_as(cond, "cannot destructure nil");local low, high = cond[1], cond[2]
 	low = low and nc.binop(nc.t_binop({ text = ">=" }), varName, low)
@@ -608,12 +617,18 @@ function luafier.internalToLua(node, opts, buf)
 
 
 	for _, __ldestr2 in ipairs(node[2]) do
-		__L_as(__ldestr2, "cannot destructure nil");local cond, body = __ldestr2[1], __ldestr2[2];if curif then 
-		local n = nc["elseif"](mapCond(cond), nc.block(body))
+		__L_as(__ldestr2, "cannot destructure nil");local cond, ifcond, body = __ldestr2[1], __ldestr2[2], __ldestr2[3];cond = mapCond(cond)
+
+		if ifcond then 
+		cond = nc.binop(nc.t_binop({ text = "and" }), cond, ifcond) end
+
+
+		if curif then 
+		local n = nc["elseif"](cond, nc.block(body))
 		curif[3] = n
 		curif = n else 
 
-		mainif = nc["if"](mapCond(cond), nc.block(body))
+		mainif = nc["if"](cond, nc.block(body))
 		curif = mainif end
 	end
 

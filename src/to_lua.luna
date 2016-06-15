@@ -585,10 +585,19 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 		local mapCond = (cond) => do
 			if cond.type == "identifier" and cond.text == "_" then
 				return nc.keyword({text = "true"})
+			elseif cond.type == "typedname" then
+				local [name, type] = cond
+				if type then
+					return nc.typecheck(cond[1].text, nc.type(cond[2][1].text))
+				else
+					-- TODO should somehow?? assign variable to this name
+					return nc.keyword({text = "true"})
+				end
+
 			elseif cond.type == "range" then
 				local [low, high] = cond
 				low = low and nc.binop(nc.t_binop({text = ">="}), varName, low)
-				high = high and nc.binop(nc.t_binop({text = "<="}), varName, high)
+				high = high and nc.binop(nc.t_binop({text = "<"}), varName, high)
 
 				local e
 				if low and high then
@@ -607,13 +616,19 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 			end
 		end
 
-		for [cond, body] ofi node[2] do
+		for [cond, ifcond, body] ofi node[2] do
+			cond = mapCond(cond)
+
+			if ifcond then
+				cond = nc.binop(nc.t_binop({text = "and"}), cond, ifcond)
+			end
+
 			if curif then
-				local n = nc["elseif"](mapCond(cond), nc.block(body))
+				local n = nc["elseif"](cond, nc.block(body))
 				curif[3] = n
 				curif = n
 			else
-				mainif = nc["if"](mapCond(cond), nc.block(body))
+				mainif = nc["if"](cond, nc.block(body))
 				curif = mainif
 			end
 		end

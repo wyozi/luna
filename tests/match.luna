@@ -4,6 +4,8 @@ local test = (x) => do
 		25..28 => return "nice 20s"
 		"dog" => return "bark bark"
 		nil => return "really, a nil?"
+		x: number if x == 13 => return "scary number"
+		x if x == "lol" => return "haha"
 		_ => return "bah"
 	end
 end
@@ -11,4 +13,7 @@ end
 assert(test(42) == "the answer to everything")
 assert(test("dog") == "bark bark")
 assert(test() == "really, a nil?")
+assert(test(26) == "nice 20s")
+assert(test(28) == "bah") -- exclusive high end
+assert(test(13) == "scary number")
 assert(test(false) == "bah")
