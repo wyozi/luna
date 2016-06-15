@@ -1,1 +1,1 @@
-bin/*.lua -diff
+bin/*.lua -diff merge=theirs
