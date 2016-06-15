@@ -1,6 +1,7 @@
 local test = (x) => do
 	match x 
 		42 => return "the answer to everything"
+		25..28 => return "nice 20s"
 		"dog" => return "bark bark"
 		nil => return "really, a nil?"
 		_ => return "bah"

@@ -585,16 +585,29 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 		local mapCond = (cond) => do
 			if cond.type == "identifier" and cond.text == "_" then
 				return nc.keyword(() => do return "true", "text" end)
+			elseif cond.type == "range" then
+				local [low, high] = cond
+				low = low and nc.binop(nc.t_binop(() => do return ">=", "text" end), varName, low)
+				high = high and nc.binop(nc.t_binop(() => do return "<=", "text" end), varName, high)
+
+				local e
+				if low and high then
+					e = nc.binop(nc.t_binop(() => do return "and", "text" end), low, high)
+				elseif low then
+					e = low
+				else
+					e = high
+				end
+
+				return nc.binop(nc.t_binop(() => do return "and", "text" end),
+					nc.binop(nc.t_binop(() => do return "==", "text" end), nc.funccall("type", nc.args(nc.explist(varName))), nc.literal(() => do return "\"number\"", "text" end)),
+					e)
 			else
 				return nc.binop(nc.t_binop(() => do return "==", "text" end), varName, cond)
 			end
 		end
 
-		for arm ofi node[2] do
-
-			local cond = arm[1]
-			local body = arm[2]
-
+		for [cond, body] ofi node[2] do
 			if curif then
 				local n = nc["elseif"](mapCond(cond), nc.block(body))
 				curif[3] = n

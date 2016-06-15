@@ -584,18 +584,31 @@ function luafier.internalToLua(node, opts, buf)
 
 	local mapCond = function(cond) 
 	if cond.type == "identifier" and cond.text == "_" then 
-	return nc.keyword(function() return "true", "text" end) else 
+	return nc.keyword(function() return "true", "text" end) elseif cond.type == "range" then 
+
+	__L_as(cond, "cannot destructure nil");local low, high = cond[1], cond[2]
+	low = low and nc.binop(nc.t_binop(function() return ">=", "text" end), varName, low)
+	high = high and nc.binop(nc.t_binop(function() return "<=", "text" end), varName, high)
+
+	local e
+	if low and high then 
+	e = nc.binop(nc.t_binop(function() return "and", "text" end), low, high) elseif low then 
+
+	e = low else 
+
+	e = high end
+
+
+	return nc.binop(nc.t_binop(function() return "and", "text" end), 
+	nc.binop(nc.t_binop(function() return "==", "text" end), nc.funccall("type", nc.args(nc.explist(varName))), nc.literal(function() return "\"number\"", "text" end)), 
+	e) else 
 
 	return nc.binop(nc.t_binop(function() return "==", "text" end), varName, cond) end end
 
 
 
-	for _, arm in ipairs(node[2]) do
-
-		local cond = arm[1]
-		local body = arm[2]
-
-		if curif then 
+	for _, __ldestr2 in ipairs(node[2]) do
+		__L_as(__ldestr2, "cannot destructure nil");local cond, body = __ldestr2[1], __ldestr2[2];if curif then 
 		local n = nc["elseif"](mapCond(cond), nc.block(body))
 		curif[3] = n
 		curif = n else 
@@ -675,7 +688,7 @@ function luafier.toLua(node, useropts)
 	local opts = {  }
 
 	for k, v in pairs(defopts) do opts[k] = v end
-	local __lcoll2 = useropts;if __lcoll2 then for k, v in pairs(__lcoll2) do opts[k] = v end end
+	local __lcoll3 = useropts;if __lcoll3 then for k, v in pairs(__lcoll3) do opts[k] = v end end
 
 	local bufIndentString = opts.prettyPrint and opts.indentString or ""
 

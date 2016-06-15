@@ -228,7 +228,9 @@ function Lexer:next()
 	self:_readToken("number", "^0x[%dabcdefABCDEF]+") or
 	self:_readBinLiteral() or
 	self:_readToken("number", "^[%d]+e[%d]+") or
-	self:_readToken("number", "^[%d%.]+") or
+
+	self:_readToken("number", "^%d*%.[%d]+") or
+	self:_readToken("number", "^[%d]+") or
 
 	self:error("invalid token " .. self.buf:sub(self.pos, self.pos))
 end
