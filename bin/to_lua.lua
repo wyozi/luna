@@ -400,6 +400,8 @@ function luafier:writeNode(node)
 
 
 
+	local nc = node:newCreator()
+
 
 	local origAssignedVarName = node[1][1][1][1].text
 	local varName = "__ifa" .. buf:getTmpIndexAndIncrement() .. "_" .. origAssignedVarName
@@ -408,11 +410,10 @@ function luafier:writeNode(node)
 	node[1][1][1][1].text = varName
 
 
-	local varId = node:cloneMeta("identifier", { text = varName })
-	local checkerIf = node:cloneMeta("if", { varId, node[2], node[3] })
+	local checkerIf = nc["if"](varName, node[2], node[3])
 
 
-	local restoreBinding = node:cloneMeta("local", { node:cloneMeta("identifier", { text = origAssignedVarName }), varId })
+	local restoreBinding = nc["local"](nc.varlist(nc.typedname(origAssignedVarName)), nc.explist(varName))
 	table.insert(checkerIf[2], 1, restoreBinding)
 
 	toLua(node[1])
