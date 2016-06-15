@@ -506,6 +506,30 @@ function luafier.internalToLua(node, opts, buf)
 	true);buf:append("end") elseif node.type == "forof" then 
 	__L_as(node, "cannot destructure nil");local var, iter, b = node[1], node[2], node[3]
 
+
+	if node.nillableColl then 
+	local nc = node:newCreator()
+
+
+	local varName = "__lcoll" .. buf:getTmpIndexAndIncrement()
+	toLua(nc["local"](nc.varlist(nc.typedname(varName)), nc.explist(iter)))
+	buf:append(";")
+
+	local node2 = node:clone()
+	node2.nillableColl = false
+
+
+	node2[2] = nc.identifier(function() return varName, "text" end)
+
+	local nif = nc["if"](varName, 
+	node2)
+
+
+	toLua(nif)
+
+	return  end
+
+
 	__L_as(var, "cannot destructure nil");local vark, varv = var[1], var[2]
 
 	local destr

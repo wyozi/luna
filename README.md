@@ -141,6 +141,11 @@ local vecs = { { "a", "b" }, { "o", "p" } }
 for i, [first, second] ofi vecs do
 	print("vec #" .. i .. ":", first, second)
 end
+
+-- only iterates collection if it is not nil
+for k,v of? coll do
+	print(k, v)
+end
 ```
 
 #### Method references (implemented: ✔)

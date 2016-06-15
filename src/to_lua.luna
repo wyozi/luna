@@ -506,12 +506,36 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 	elseif node.type == "forof" then
 		local [var, iter, b] = node
 
+		-- target collection can be nil, so we need to wrap the whole loop in an if
+		if node.nillableColl then
+			local nc = node:newCreator()
+
+			-- create new variable for the collection; otherwise we might eval something twice
+			local varName = "__lcoll" .. buf:getTmpIndexAndIncrement()
+			toLua(nc["local"](nc.varlist(nc.typedname(varName)), nc.explist(iter))) buf:append(";")
+
+			-- clone node and remove nillable flag, otherwise this block is called again
+			local node2 = node:clone()
+			node2.nillableColl = false
+
+			-- modify the new for node's iterator to point to our newly made variable
+			node2[2] = nc.identifier(() => do return varName, "text" end)
+
+			local nif = nc["if"](
+				varName,
+				node2
+			)
+			toLua(nif)
+
+			return
+		end
+
 		local [vark, varv] = var
 
 		local destr
 		if varv.type == "tabledestructor" or varv.type == "arraydestructor" then
 			local varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
-			
+
 			-- create a new identifier that will replace destructor
 			local newVarv = varv:cloneMeta("identifier")
 			newVarv.text = varName

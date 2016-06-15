@@ -13,3 +13,8 @@ for k,v of arr do
 end
 for i,v ofi arr do
 end
+
+local oo = nil
+for x of? oo do
+	assert(false, "nil collection iterated")
+end
