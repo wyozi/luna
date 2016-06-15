@@ -1,44 +1,44 @@
 local __L_as,__L_to,__L_gmt=assert,type,getmetatable;local function __L_t(o)local t=__L_to(o) if t=="table" then local mt = __L_gmt(o)return (mt and mt.__type) or t end return t end;
-local luafier = {  }
+local to_lua = {  }
 
 local LUAFN_ASSERT = "__L_as"
 local LUAFN_TYPE = "__L_t"
 
-function luafier.isNode(o)
+function to_lua.isNode(o)
 	return type(o) == "table" and not not o.type
 end
 
 
-function luafier.getNodeLastLine(n)
+function to_lua.getNodeLastLine(n)
 	local s = n.line
 	if not s then return -1 end
 
 	local l = s
 	for k, v in ipairs(n) do
-		if luafier.isNode(v) then 
-		l = math.max(l, luafier.getNodeLastLine(v)) end
+		if to_lua.isNode(v) then 
+		l = math.max(l, to_lua.getNodeLastLine(v)) end
 	end
 
 	return l
 end
 
-function luafier.isParentOf(par, node)
+function to_lua.isParentOf(par, node)
 	if par == node then return true end
 	for k, v in ipairs(par) do
-		if v == node or (luafier.isNode(v) and luafier.isParentOf(v, node)) then return true end
+		if v == node or (to_lua.isNode(v) and to_lua.isParentOf(v, node)) then return true end
 	end
 	return false
 end
 
 
 
-function luafier.getLinenoDiff(node1, node2)
+function to_lua.getLinenoDiff(node1, node2)
 	local line1, line2
 
 	if type(node1) == "number" then 
 	line1 = node1 else 
 
-	line1 = luafier.getNodeLastLine(node1) end
+	line1 = to_lua.getNodeLastLine(node1) end
 
 
 	line2 = node2.line
@@ -50,23 +50,8 @@ function luafier.getLinenoDiff(node1, node2)
 	return line2 - line1
 end
 
-function luafier.listToLua(list, opts, buf)
-	__L_as(__L_t(buf) == "luabuf", "Parameter 'buf' must be a luabuf")
-	local lastnode
-	for i, snode in ipairs(list) do
-		if i > 1 then buf:append(", ") end
-		local lndiff = opts.matchLinenumbers and lastnode and luafier.getLinenoDiff(lastnode, snode)
-		lastnode = snode
-		if lndiff and lndiff > 0 then 
-		for i = 1, lndiff do buf:nl() end end
 
-
-		luafier.internalToLua(snode, opts, buf)
-	end
-end
-
-
-function luafier.processParListFuncBlock(parlist, funcbody)
+function to_lua.processParListFuncBlock(parlist, funcbody)
 	__L_as(__L_t(parlist) == "lunanode", "Parameter 'parlist' must be a lunanode");__L_as(__L_t(funcbody) == "lunanode", "Parameter 'funcbody' must be a lunanode")
 	local paramextras = {  }
 	for _, par in ipairs(parlist) do
@@ -202,44 +187,70 @@ function luaBuffer:tostring()
 	return table.concat(self.buf, "")
 end
 
-function luafier.internalToLua(node, opts, buf)
-	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode");__L_as(__L_t(buf) == "luabuf", "Parameter 'buf' must be a luabuf")
-	local function toLua(lnode)
-		luafier.internalToLua(lnode, opts, buf)
+local luafier = {  }
+luafier.__index = luafier
+luafier.__type = "luafier"
+
+function luafier.new(buf, opts)
+	__L_as(__L_t(buf) == "luabuf", "Parameter 'buf' must be a luabuf");__L_as(__L_t(opts) == "table", "Parameter 'opts' must be a table")
+	return setmetatable({
+		buf = buf, 
+		opts = opts
+	}, 
+	luafier)
+end
+function luafier:getLinenoDiff(node1, node2)
+	if self.opts.matchLinenumbers then return to_lua.getLinenoDiff(node1, node2) end
+end
+
+
+
+
+
+
+function luafier:wrapIndent(n1, n2, fn, alsoIfPrettyPrint)
+	local lndiff = self:getLinenoDiff(n1, n2)
+	local addNl = lndiff or ((alsoIfPrettyPrint and self.opts.prettyPrint) and 1) or 0
+
+	if addNl > 0 then 
+	self.buf:nlIndent()
+	for i = 1, addNl - 1 do self.buf:nl() end else 
+
+	self.buf:appendSpace(" ") end
+
+
+	fn()
+
+	if addNl > 0 then 
+	self.buf:nlUnindent() else 
+
+	self.buf:append(" ") end
+end
+
+
+function luafier:writeList(list)
+	__L_as(__L_t(list) == "lunanode", "Parameter 'list' must be a lunanode")
+	local lastnode
+	for i, snode in ipairs(list) do
+		if i > 1 then self.buf:append(", ") end
+		local lndiff = self.opts.matchLinenumbers and lastnode and to_lua.getLinenoDiff(lastnode, snode)
+		lastnode = snode
+		if lndiff and lndiff > 0 then 
+		for i = 1, lndiff do self.buf:nl() end end
+
+
+		self:writeNode(snode)
 	end
-	local function listToLua(lnode)
-		luafier.listToLua(lnode, opts, buf)
-	end
+end
 
+function luafier:writeNode(node)
+	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode")
+	__L_as(self, "cannot destructure nil");local opts, buf = self.opts, self.buf
 
-	local function getLinenoDiff(node1, node2)
-		if opts.matchLinenumbers then 
-		return luafier.getLinenoDiff(node1, node2) end
-	end
-
-
-
-
-
-
-	local function wrapIndent(n1, n2, fn, alsoIfPrettyPrint)
-		local lndiff = getLinenoDiff(n1, n2)
-		local addNl = lndiff or ((alsoIfPrettyPrint and opts.prettyPrint) and 1) or 0
-
-		if addNl > 0 then 
-		buf:nlIndent()
-		for i = 1, addNl - 1 do buf:nl() end else 
-
-		buf:appendSpace(" ") end
-
-
-		fn()
-
-		if addNl > 0 then 
-		buf:nlUnindent() else 
-
-		buf:append(" ") end
-	end
+	local toLua = (function(...) return self:writeNode(...) end)
+	local listToLua = (function(...) return self:writeList(...) end)
+	local getLinenoDiff = (function(...) return self:getLinenoDiff(...) end)
+	local wrapIndent = (function(...) return self:wrapIndent(...) end)
 
 
 	if node.type == "block" then 
@@ -278,39 +289,7 @@ function luafier.internalToLua(node, opts, buf)
 
 
 
-	__L_as(node, "cannot destructure nil");local destructor, target = node[1], node[2]
-	local names = destructor[1]
-
-
-	local varName
-	if target.type == "identifier" then 
-	varName = target.text else 
-
-	varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
-	buf:append("local ")
-	buf:append(varName);buf:append("=");toLua(target);buf:append(";") end
-
-
-	buf:append(LUAFN_ASSERT)
-	buf:append("(");buf:append(varName);buf:append(", \"cannot destructure nil\");")
-	buf:append("local ")
-	for i, name in ipairs(names) do
-		if i > 1 then buf:append(", ") end
-		toLua(name)
-	end
-	buf:append(" = ")
-
-	if destructor.type == "arraydestructor" then 
-	for i = 1, #names do
-		if i > 1 then buf:append(", ") end
-		buf:append(varName)
-		buf:append("[");buf:append(tostring(i));buf:append("]")
-	end elseif destructor.type == "tabledestructor" then 
-	for i, member in ipairs(names) do
-		if i > 1 then buf:append(", ") end
-		buf:append(varName)
-		buf:append(".");toLua(member)
-	end end elseif node.type == "funcname" then 
+	self:writeLocalDestructorNode(node) elseif node.type == "funcname" then 
 
 
 	local methodOffset = node.isMethod and -1 or 0
@@ -338,7 +317,7 @@ function luafier.internalToLua(node, opts, buf)
 	toLua(node[1]) elseif node.type == "sfunc" or node.type == "funcbody" then 
 
 
-	local pl, fb = luafier.processParListFuncBlock(node[1], node[2])
+	local pl, fb = to_lua.processParListFuncBlock(node[1], node[2])
 
 	if node.type == "sfunc" then 
 	buf:append("function(") else 
@@ -504,138 +483,15 @@ function luafier.internalToLua(node, opts, buf)
 		toLua(b)
 	end, 
 	true);buf:append("end") elseif node.type == "forof" then 
-	__L_as(node, "cannot destructure nil");local var, iter, b = node[1], node[2], node[3]
+	self:writeForOfNode(node) elseif node.type == "methodref" then 
 
-
-	if node.nillableColl then 
-	local nc = node:newCreator()
-
-
-	local varName = "__lcoll" .. buf:getTmpIndexAndIncrement()
-	toLua(nc["local"](nc.varlist(nc.typedname(varName)), nc.explist(iter)))
-	buf:append(";")
-
-	local node2 = node:clone()
-	node2.nillableColl = false
-
-
-	node2[2] = nc.identifier({ text = varName })
-
-	local nif = nc["if"](varName, 
-	node2)
-
-
-	toLua(nif)
-
-	return  end
-
-
-	__L_as(var, "cannot destructure nil");local vark, varv = var[1], var[2]
-
-	local destr
-	if varv.type == "tabledestructor" or varv.type == "arraydestructor" then 
-	local varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
-
-
-	local newVarv = varv:cloneMeta("identifier")
-	newVarv.text = varName
-
-
-	destr = varv:cloneMeta("localdestructor")
-	destr[1] = varv
-	destr[2] = newVarv
-
-	varv = newVarv end
-
-
-	buf:append("for ")
-	if vark then 
-	toLua(vark) else 
-
-	buf:append("_") end
-
-	buf:append(",")
-	buf:appendSpace(" ");toLua(varv);buf:append(" in ")
-	if node.iterArray then buf:append("ipairs") else 
-
-	buf:append("pairs") end
-
-	buf:append("(")
-	toLua(iter);buf:append(") do")
-	wrapIndent(iter, b, function ()
-		if destr then toLua(destr) end
-		toLua(b)
-	end, 
-	true)
-	buf:append("end") elseif node.type == "methodref" then 
 
 	buf:append("(function(...) return ")
 	toLua(node[1])
 	buf:append(":");toLua(node[2]);buf:append("(...)")
 	buf:append(" end)") elseif node.type == "match" then 
 
-	local nc = node:newCreator()
-
-	local varName = "__lmatch" .. buf:getTmpIndexAndIncrement()
-	toLua(nc["local"](nc.varlist(nc.typedname(varName)), nc.explist(node[1])))
-	buf:append(";")
-	local mainif
-	local curif
-
-	local mapCond = function(cond) 
-	if cond.type == "identifier" and cond.text == "_" then 
-	return nc.keyword({ text = "true" }) elseif cond.type == "typedname" then 
-
-	__L_as(cond, "cannot destructure nil");local name, type = cond[1], cond[2]
-	if type then 
-	return nc.typecheck(cond[1].text, nc.type(cond[2][1].text)) else 
-
-
-	return nc.keyword({ text = "true" }) end elseif cond.type == "range" then 
-
-
-
-	__L_as(cond, "cannot destructure nil");local low, high = cond[1], cond[2]
-	low = low and nc.binop(nc.t_binop({ text = ">=" }), varName, low)
-	high = high and nc.binop(nc.t_binop({ text = "<=" }), varName, high)
-
-	local e
-	if low and high then 
-	e = nc.binop(nc.t_binop({ text = "and" }), low, high) elseif low then 
-
-	e = low else 
-
-	e = high end
-
-
-	return nc.binop(nc.t_binop({ text = "and" }), 
-	nc.binop(nc.t_binop({ text = "==" }), nc.funccall("type", nc.args(nc.explist(varName))), nc.literal({ text = "\"number\"" })), 
-	e) else 
-
-	return nc.binop(nc.t_binop({ text = "==" }), varName, cond) end end
-
-
-
-	for _, __ldestr2 in ipairs(node[2]) do
-		__L_as(__ldestr2, "cannot destructure nil");local cond, ifcond, body = __ldestr2[1], __ldestr2[2], __ldestr2[3];cond = mapCond(cond)
-
-		if ifcond then 
-		cond = nc.binop(nc.t_binop({ text = "and" }), cond, ifcond) end
-
-
-		if curif then 
-		local n = nc["elseif"](cond, nc.block(body))
-		curif[3] = n
-		curif = n else 
-
-		mainif = nc["if"](cond, nc.block(body))
-		curif = mainif end
-	end
-
-
-	if mainif then 
-	toLua(mainif) end elseif node.type == "binop" then 
-
+	self:writeMatchNode(node) elseif node.type == "binop" then 
 
 
 	toLua(node[2])
@@ -680,6 +536,186 @@ function luafier.internalToLua(node, opts, buf)
 end
 
 
+function luafier:writeForOfNode(node)
+	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode")
+	assert(node.type == "forof")
+	__L_as(self, "cannot destructure nil");local buf = self.buf
+	__L_as(node, "cannot destructure nil");local var, iter, b = node[1], node[2], node[3]
+
+
+	if node.nillableColl then 
+	local nc = node:newCreator()
+
+
+	local varName = "__lcoll" .. buf:getTmpIndexAndIncrement()
+	self:writeNode(nc["local"](nc.varlist(nc.typedname(varName)), nc.explist(iter)))
+	buf:append(";")
+
+	local node2 = node:clone()
+	node2.nillableColl = false
+
+
+	node2[2] = nc.identifier({ text = varName })
+
+	local nif = nc["if"](varName, 
+	node2)
+
+
+	self:writeNode(nif)
+
+	return  end
+
+
+	__L_as(var, "cannot destructure nil");local vark, varv = var[1], var[2]
+
+	local destr
+	if varv.type == "tabledestructor" or varv.type == "arraydestructor" then 
+	local varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
+
+
+	local newVarv = varv:cloneMeta("identifier")
+	newVarv.text = varName
+
+
+	destr = varv:cloneMeta("localdestructor")
+	destr[1] = varv
+	destr[2] = newVarv
+
+	varv = newVarv end
+
+
+	buf:append("for ")
+	if vark then 
+	self:writeNode(vark) else 
+
+	buf:append("_") end
+
+	buf:append(",")
+	buf:appendSpace(" ");self:writeNode(varv);buf:append(" in ")
+	if node.iterArray then buf:append("ipairs") else 
+
+	buf:append("pairs") end
+
+	buf:append("(")
+	self:writeNode(iter);buf:append(") do")
+	self:wrapIndent(iter, b, function ()
+		if destr then self:writeNode(destr) end
+		self:writeNode(b)
+	end, 
+	true)
+	buf:append("end")
+end
+function luafier:writeLocalDestructorNode(node)
+	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode")
+	assert(node.type == "localdestructor")
+	__L_as(self, "cannot destructure nil");local buf = self.buf
+	__L_as(node, "cannot destructure nil");local destructor, target = node[1], node[2]
+	local names = destructor[1]
+
+
+	local varName
+	if target.type == "identifier" then 
+	varName = target.text else 
+
+	varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
+	buf:append("local ")
+	buf:append(varName);buf:append("=");self:writeNode(target);buf:append(";") end
+
+
+	buf:append(LUAFN_ASSERT)
+	buf:append("(");buf:append(varName);buf:append(", \"cannot destructure nil\");")
+	buf:append("local ")
+	for i, name in ipairs(names) do
+		if i > 1 then buf:append(", ") end
+		self:writeNode(name)
+	end
+	buf:append(" = ")
+
+	if destructor.type == "arraydestructor" then 
+	for i = 1, #names do
+		if i > 1 then buf:append(", ") end
+		buf:append(varName)
+		buf:append("[");buf:append(tostring(i));buf:append("]")
+	end elseif destructor.type == "tabledestructor" then 
+	for i, member in ipairs(names) do
+		if i > 1 then buf:append(", ") end
+		buf:append(varName)
+		buf:append(".");self:writeNode(member)
+	end end
+end
+
+function luafier:writeMatchNode(node)
+	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode")
+	assert(node.type == "match")
+	__L_as(self, "cannot destructure nil");local buf = self.buf
+	local nc = node:newCreator()
+
+	local varName = "__lmatch" .. buf:getTmpIndexAndIncrement()
+	self:writeNode(nc["local"](nc.varlist(nc.typedname(varName)), nc.explist(node[1])))
+	buf:append(";")
+	local mainif
+	local curif
+
+	local mapCond = function(cond) 
+	if cond.type == "identifier" and cond.text == "_" then 
+	return nc.keyword({ text = "true" }) elseif cond.type == "typedname" then 
+
+	__L_as(cond, "cannot destructure nil");local name, type = cond[1], cond[2]
+	if type then 
+	return nc.typecheck(cond[1].text, nc.type(cond[2][1].text)) else 
+
+
+	return nc.keyword({ text = "true" }) end elseif cond.type == "range" then 
+
+
+
+	__L_as(cond, "cannot destructure nil");local low, high = cond[1], cond[2]
+	low = low and nc.binop(nc.t_binop({ text = ">=" }), varName, low)
+	high = high and nc.binop(nc.t_binop({ text = "<" }), varName, high)
+
+	local e
+	if low and high then 
+	e = nc.binop(nc.t_binop({ text = "and" }), low, high) elseif low then 
+
+	e = low else 
+
+	e = high end
+
+
+	return nc.binop(nc.t_binop({ text = "and" }), 
+	nc.binop(nc.t_binop({ text = "==" }), nc.funccall("type", nc.args(nc.explist(varName))), nc.literal({ text = "\"number\"" })), 
+	e) else 
+
+	return nc.binop(nc.t_binop({ text = "==" }), varName, cond) end end
+
+
+
+	for _, __ldestr2 in ipairs(node[2]) do
+		__L_as(__ldestr2, "cannot destructure nil");local cond, ifcond, body = __ldestr2[1], __ldestr2[2], __ldestr2[3];cond = mapCond(cond)
+
+		if ifcond then 
+		cond = nc.binop(nc.t_binop({ text = "and" }), cond, ifcond) end
+
+
+		if curif then 
+		local n = nc["elseif"](cond, nc.block(body))
+		curif[3] = n
+		curif = n else 
+
+		mainif = nc["if"](cond, nc.block(body))
+		curif = mainif end
+	end
+
+
+	if mainif then 
+	self:writeNode(mainif) end
+end
+
+
+function luafier:getLua()
+	return self.buf:tostring()
+end
+
 local defopts = {
 
 	matchLinenumbers = true, 
@@ -699,7 +735,7 @@ local lunaInclusions = [[local ]] .. LUAFN_ASSERT .. [[,__L_to,__L_gmt=assert,ty
 [[local function ]] .. LUAFN_TYPE .. [[(o)local t=__L_to(o) if t=="table" then local mt = __L_gmt(o)return (mt and mt.__type) or t end return t end]]
 
 
-function luafier.toLua(node, useropts)
+function to_lua.toLua(node, useropts)
 	local opts = {  }
 
 	for k, v in pairs(defopts) do opts[k] = v end
@@ -710,8 +746,9 @@ function luafier.toLua(node, useropts)
 	local buf = luaBuffer.new(bufIndentString, opts.nlString, not opts.prettyPrint)
 	buf:append(lunaInclusions)
 	buf:append(";")
-	luafier.internalToLua(node, opts, buf)
-	return buf:tostring()
+	local l = luafier.new(buf, opts)
+	l:writeNode(node)
+	return l:getLua()
 end
 
-return luafier
+return to_lua
