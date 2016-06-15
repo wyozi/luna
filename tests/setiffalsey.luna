@@ -1,0 +1,9 @@
+local x = nil
+
+x ||= "hey"
+assert(x == "hey")
+
+x ||= "hello"
+assert(x == "hey")
+
+x ||= assert(false, "this should not be evaluated")

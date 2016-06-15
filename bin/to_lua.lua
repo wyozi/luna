@@ -96,12 +96,7 @@ function to_lua.processParListFuncBlock(parlist, funcbody)
 		if value then 
 		local nc = parlist:newCreator()
 
-		local as = nc["if"](nc.binop(nc.t_binop({ text = "==" }), var, nc.keyword({ text = "nil" })), 
-		nc.block(nc.assignment(nc.t_assignop({ text = "=" }), var, value)))
-
-
-
-
+		local as = nc.assignment(nc.t_assignop({ text = "||=" }), nc.varlist(var), nc.explist(value))
 
 		table.insert(funcbody, i, as) end
 	end
@@ -317,21 +312,31 @@ function luafier:writeNode(node)
 
 	buf:append("end") elseif node.type == "assignment" then 
 
-	local op = node[1].text
+	__L_as(node, "cannot destructure nil");local opnode, vars, exps = node[1], node[2], node[3]
+	local op = opnode.text
 
 	if op == "=" then 
-	toLua(node[2])
-	buf:append(" = ");toLua(node[3]) elseif op == "||=" then 
-	assert(#node[3] == 1, "falsey assignment only works on 1-long explists currently")
-	toLua(node[2])
-	buf:append(" = ");toLua(node[2]);buf:append(" or (");toLua(node[3]);buf:append(")") else 
-	assert(#node[3] == 1, "mod assignment only works on 1-long explists currently")
+	toLua(vars)
+	buf:append(" = ");toLua(exps) elseif op == "||=" then 
+	assert(#vars == 1 and #exps == 1, "falsey assignment only works on single variable assignments")
+
+	local nc = node:newCreator()
+	local falseyAssign = nc["if"](nc.unop(nc.t_unop({ text = "not" }), vars[1]), 
+	nc.block(nc.assignment(nc.t_assignop({ text = "=" }), vars, exps)))
+
+
+
+
+
+	self:writeNode(falseyAssign) else 
+
+	assert(#exps == 1, "mod assignment only works on 1-long explists currently")
 
 
 	local modop = op:sub(1, 1)
 
-	toLua(node[2])
-	buf:append(" = ");toLua(node[2]);buf:append(" ");buf:append(modop);buf:append(" (");toLua(node[3]);buf:append(")") end elseif node.type == "funccall" then 
+	toLua(vars)
+	buf:append(" = ");toLua(vars);buf:append(" ");buf:append(modop);buf:append(" (");toLua(exps);buf:append(")") end elseif node.type == "funccall" then 
 
 	toLua(node[1])
 	buf:append("(");toLua(node[2]);buf:append(")") elseif node.type == "methodcall" then 
