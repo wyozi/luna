@@ -185,20 +185,22 @@ function luaBuffer:getTmpIndexAndIncrement()
 end
 
 -- Appends optional space. This might nop depending on the options 
-function luaBuffer:appendSpace(t)
+function luaBuffer:appendSpace(t: string)
 	if not self.noExtraSpace then
 		self:append(t)
+	end
+end
+
+-- makes sure that last node in luabuffer matches given pattern
+function luaBuffer:checkLastNode(pattern: string)
+	if local ln = self.buf[#self.buf] then
+		return not not ln:match(pattern)
 	end
 end
 
 function luaBuffer:tostring()
 	return table.concat(self.buf, "")
 end
-
--- it is safe to insert semicolon after this node types
-local _safeSemicolon = {
-	["assignment"] = true, ["funccall"] = true
-}
 
 function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 	local function toLua(lnode)
@@ -257,8 +259,8 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 				if i > 1 then buf:nl() end
 			end
 
-			-- Add semicolon if it's safe and if there seems to be no other way
-			if buf.hasIndented and snode and _safeSemicolon[snode.type] then
+			-- Add semicolon if there is something on line and there is no space/semicolon
+			if buf.hasIndented and buf:checkLastNode("[^%s;]$") then
 				buf:append(";")
 			end
 

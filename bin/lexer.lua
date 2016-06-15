@@ -38,13 +38,13 @@ function Lexer:_readPattern(p, extra)
 
 	if afterLastNLSpace then 
 	local nlCount = 0
-	for nl in txt:gmatch("\n") do ;nlCount = nlCount + 1 end
+	for nl in txt:gmatch("\n") do nlCount = nlCount + 1 end
 	self.line = self.line + nlCount
 	self.col = 1 + #afterLastNLSpace else 
 
 
 	local tabCount = 0
-	for tab in txt:gmatch("\t") do ;tabCount = tabCount + (1) end
+	for tab in txt:gmatch("\t") do tabCount = tabCount + (1) end
 
 	self.col = self.col + (#txt - tabCount + (tabCount * 4)) end
 

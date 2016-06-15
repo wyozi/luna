@@ -160,7 +160,7 @@ function luaBuffer:appendln(t)
 	self:nl()
 end
 function luaBuffer:append(t)
-	if not self.hasIndented then ;self.buf[#self.buf + 1] = self.indentString:rep(self.indent)
+	if not self.hasIndented then self.buf[#self.buf + 1] = self.indentString:rep(self.indent)
 	self.hasIndented = true end
 
 	self.buf[#self.buf + 1] = t
@@ -186,19 +186,21 @@ end
 
 
 function luaBuffer:appendSpace(t)
-	if not self.noExtraSpace then 
-	self:append(t) end
+	__L_as(__L_t(t) == "string", "Parameter 't' must be a string")
+	if not self.noExtraSpace then self:append(t) end
 end
 
+
+
+function luaBuffer:checkLastNode(pattern)
+	__L_as(__L_t(pattern) == "string", "Parameter 'pattern' must be a string")
+	local __ifa0_ln = self.buf[#self.buf]; if __ifa0_ln then local ln = __ifa0_ln
+	return not not ln:match(pattern) end
+end
 
 function luaBuffer:tostring()
 	return table.concat(self.buf, "")
 end
-
-
-local _safeSemicolon = {
-	["assignment"] = true, ["funccall"] = true
-}
 
 function luafier.internalToLua(node, opts, buf)
 	__L_as(__L_t(node) == "lunanode", "Parameter 'node' must be a lunanode");__L_as(__L_t(buf) == "luabuf", "Parameter 'buf' must be a luabuf")
@@ -258,7 +260,7 @@ function luafier.internalToLua(node, opts, buf)
 
 
 
-		if buf.hasIndented and snode and _safeSemicolon[snode.type] then 
+		if buf.hasIndented and buf:checkLastNode("[^%s;]$") then 
 		buf:append(";") end
 
 
@@ -286,11 +288,11 @@ function luafier.internalToLua(node, opts, buf)
 
 	varName = "__ldestr" .. buf:getTmpIndexAndIncrement()
 	buf:append("local ")
-	buf:append(varName)buf:append("=");toLua(target)buf:append(";") end
+	buf:append(varName);buf:append("=");toLua(target);buf:append(";") end
 
 
 	buf:append(LUAFN_ASSERT)
-	buf:append("(")buf:append(varName)buf:append(", \"cannot destructure nil\");")
+	buf:append("(");buf:append(varName);buf:append(", \"cannot destructure nil\");")
 	buf:append("local ")
 	for i, name in ipairs(names) do
 		if i > 1 then buf:append(", ") end
@@ -302,7 +304,7 @@ function luafier.internalToLua(node, opts, buf)
 	for i = 1, #names do
 		if i > 1 then buf:append(", ") end
 		buf:append(varName)
-		buf:append("[")buf:append(tostring(i))buf:append("]")
+		buf:append("[");buf:append(tostring(i));buf:append("]")
 	end elseif destructor.type == "tabledestructor" then 
 	for i, member in ipairs(names) do
 		if i > 1 then buf:append(", ") end
@@ -346,7 +348,7 @@ function luafier.internalToLua(node, opts, buf)
 	listToLua(pl)
 	buf:append(")")
 
-	wrapIndent(pl, fb, function () ;toLua(fb) end, true)
+	wrapIndent(pl, fb, function () toLua(fb) end, true)
 
 	buf:append("end") elseif node.type == "assignment" then 
 
@@ -357,19 +359,19 @@ function luafier.internalToLua(node, opts, buf)
 	buf:append(" = ");toLua(node[3]) elseif op == "||=" then 
 	assert(#node[3] == 1, "falsey assignment only works on 1-long explists currently")
 	toLua(node[2])
-	buf:append(" = ");toLua(node[2])buf:append(" or (");toLua(node[3])buf:append(")") else 
+	buf:append(" = ");toLua(node[2]);buf:append(" or (");toLua(node[3]);buf:append(")") else 
 	assert(#node[3] == 1, "mod assignment only works on 1-long explists currently")
 
 
 	local modop = op:sub(1, 1)
 
 	toLua(node[2])
-	buf:append(" = ");toLua(node[2])buf:append(" ")buf:append(modop)buf:append(" (");toLua(node[3])buf:append(")") end elseif node.type == "funccall" then 
+	buf:append(" = ");toLua(node[2]);buf:append(" ");buf:append(modop);buf:append(" (");toLua(node[3]);buf:append(")") end elseif node.type == "funccall" then 
 
 	toLua(node[1])
-	buf:append("(");toLua(node[2])buf:append(")") elseif node.type == "methodcall" then 
+	buf:append("(");toLua(node[2]);buf:append(")") elseif node.type == "methodcall" then 
 	toLua(node[1])
-	buf:append(":");toLua(node[2])buf:append("(");toLua(node[3])buf:append(")") elseif node.type == "args" or node.type == "fieldlist" or node.type == "parlist" or node.type == "typednamelist" or node.type == "varlist" or node.type == "explist" then 
+	buf:append(":");toLua(node[2]);buf:append("(");toLua(node[3]);buf:append(")") elseif node.type == "args" or node.type == "fieldlist" or node.type == "parlist" or node.type == "typednamelist" or node.type == "varlist" or node.type == "explist" then 
 
 	listToLua(node) elseif node.type == "typedname" then 
 
@@ -380,7 +382,7 @@ function luafier.internalToLua(node, opts, buf)
 
 
 	buf:append("return")
-	local __ifa0_stat = node[1]; if __ifa0_stat then local stat = __ifa0_stat
+	local __ifa1_stat = node[1]; if __ifa1_stat then local stat = __ifa1_stat
 	buf:append(" ")
 	toLua(stat) end elseif node.type == "returnif" then 
 
@@ -405,9 +407,9 @@ function luafier.internalToLua(node, opts, buf)
 	toLua(node[1])
 	buf:append(".");toLua(node[2]) elseif node.type == "indexsafe" then 
 	buf:append("(")
-	toLua(node[1])buf:append(" and ");toLua(node[1])buf:append(".");toLua(node[2])buf:append(")") elseif node.type == "indexb" then 
+	toLua(node[1]);buf:append(" and ");toLua(node[1]);buf:append(".");toLua(node[2]);buf:append(")") elseif node.type == "indexb" then 
 	toLua(node[1])
-	buf:append("[");toLua(node[2])buf:append("]") elseif node.type == "tableconstructor" then 
+	buf:append("[");toLua(node[2]);buf:append("]") elseif node.type == "tableconstructor" then 
 
 	buf:append("{")
 
@@ -415,7 +417,7 @@ function luafier.internalToLua(node, opts, buf)
 	local firstField = node[1][1] or node[1]
 
 
-	wrapIndent(node.line, firstField, function () ;toLua(node[1]) end)
+	wrapIndent(node.line, firstField, function () toLua(node[1]) end)
 
 	buf:append("}") elseif node.type == "field" then 
 
@@ -426,9 +428,9 @@ function luafier.internalToLua(node, opts, buf)
 	toLua(key) else 
 
 	buf:append("[")
-	toLua(key)buf:append("]") end
+	toLua(key);buf:append("]") end
 	buf:appendSpace(" ")
-	buf:append("=")buf:appendSpace(" ");toLua(val) else 
+	buf:append("=");buf:appendSpace(" ");toLua(val) else 
 	toLua(val) end elseif node.type == "ifassign" then 
 
 
@@ -452,7 +454,7 @@ function luafier.internalToLua(node, opts, buf)
 	buf:append("; ");toLua(checkerIf) elseif node.type == "if" or node.type == "elseif" then 
 
 	buf:append(node.type)
-	buf:append(" ");toLua(node[1])buf:append(" then")
+	buf:append(" ");toLua(node[1]);buf:append(" then")
 	wrapIndent(node, node[2], function ()
 		toLua(node[2])
 	end, 
@@ -471,11 +473,11 @@ function luafier.internalToLua(node, opts, buf)
 	buf:append("end") elseif node.type == "while" then 
 
 	buf:append("while ")
-	toLua(node[1])buf:append(" do")
+	toLua(node[1]);buf:append(" do")
 	wrapIndent(node, node[2], function ()
 		toLua(node[2])
 	end, 
-	true)buf:append("end") elseif node.type == "repeat" then 
+	true);buf:append("end") elseif node.type == "repeat" then 
 	buf:append("repeat")
 	wrapIndent(node, node[1], function ()
 		toLua(node[1])
@@ -485,7 +487,7 @@ function luafier.internalToLua(node, opts, buf)
 
 	__L_as(node, "cannot destructure nil");local var, low, high, step, b = node[1], node[2], node[3], node[4], node[5]
 	buf:append("for ")
-	toLua(var)buf:appendSpace(" ")buf:append("=")buf:appendSpace(" ");toLua(low)buf:append(",")buf:appendSpace(" ");toLua(high)
+	toLua(var);buf:appendSpace(" ");buf:append("=");buf:appendSpace(" ");toLua(low);buf:append(",");buf:appendSpace(" ");toLua(high)
 	if step then buf:append(",")
 	buf:appendSpace(" ")
 	toLua(step) end
@@ -497,11 +499,11 @@ function luafier.internalToLua(node, opts, buf)
 	buf:append("end") elseif node.type == "forgen" then 
 	__L_as(node, "cannot destructure nil");local names, iter, b = node[1], node[2], node[3]
 	buf:append("for ")
-	toLua(names)buf:append(" in ");toLua(iter)buf:append(" do")
+	toLua(names);buf:append(" in ");toLua(iter);buf:append(" do")
 	wrapIndent(iter, b, function ()
 		toLua(b)
 	end, 
-	true)buf:append("end") elseif node.type == "forof" then 
+	true);buf:append("end") elseif node.type == "forof" then 
 	__L_as(node, "cannot destructure nil");local var, iter, b = node[1], node[2], node[3]
 
 	local destr
@@ -521,20 +523,20 @@ function luafier.internalToLua(node, opts, buf)
 
 
 	buf:append("for _,")
-	toLua(var)buf:append(" in pairs(");toLua(iter)buf:append(") do")
+	toLua(var);buf:append(" in pairs(");toLua(iter);buf:append(") do")
 	wrapIndent(iter, b, function ()
-		if destr then ;toLua(destr) end
+		if destr then toLua(destr) end
 		toLua(b)
 	end, 
-	true)buf:append("end") elseif node.type == "methodref" then 
+	true);buf:append("end") elseif node.type == "methodref" then 
 
 	buf:append("(function(...) return ")
 	toLua(node[1])
-	buf:append(":");toLua(node[2])buf:append("(...)")
+	buf:append(":");toLua(node[2]);buf:append("(...)")
 	buf:append(" end)") elseif node.type == "binop" then 
 
 	toLua(node[2])
-	buf:appendSpace(" ")buf:append(node[1])
+	buf:appendSpace(" ");buf:append(node[1])
 	local lndiff = getLinenoDiff(node[2], node[3])
 
 	if lndiff and lndiff > 0 then 
@@ -553,7 +555,7 @@ function luafier.internalToLua(node, opts, buf)
 
 
 	buf:append("(")
-	toLua(node[1])buf:append(")") elseif node.type == "identifier" or node.type == "keyword" then 
+	toLua(node[1]);buf:append(")") elseif node.type == "identifier" or node.type == "keyword" then 
 
 	buf:append(node.text) elseif node.type == "literal" then 
 
@@ -593,9 +595,9 @@ local lunaInclusions = [[local ]] .. LUAFN_ASSERT .. [[,__L_to,__L_gmt=assert,ty
 function luafier.toLua(node, useropts)
 	local opts = {  }
 
-	for k, v in pairs(defopts) do ;opts[k] = v end
+	for k, v in pairs(defopts) do opts[k] = v end
 	if useropts then 
-	for k, v in pairs(useropts) do ;opts[k] = v end end
+	for k, v in pairs(useropts) do opts[k] = v end end
 
 
 	local bufIndentString = opts.prettyPrint and opts.indentString or ""

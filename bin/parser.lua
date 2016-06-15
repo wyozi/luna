@@ -48,7 +48,7 @@ function Parser:error(text)
 	text = text .. " preceding tokens: "
 	for i = 2, 0, -1 do
 		local t = self.tokens[self.tokenIndex - 1 - i]
-		if t then ;text = text .. " [" .. t.type .. ":" .. t.text .. "]" end
+		if t then text = text .. " [" .. t.type .. ":" .. t.text .. "]" end
 	end
 
 	error("[Luna Parser] " .. text .. " at line " .. line .. " col " .. col)
@@ -65,15 +65,15 @@ node_meta.__type = "lunanode"
 function node_meta:cloneMeta(newType, merget)
 	__L_as(__L_t(newType) == "string", "Parameter 'newType' must be a string");__L_as(merget == nil or __L_t(merget) == "table", "Parameter 'merget' must be a table")
 	local cloned = setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
-	if merget then for k, v in pairs(merget) do ;cloned[k] = v end end
+	if merget then for k, v in pairs(merget) do cloned[k] = v end end
 
 	return cloned
 end
 function node_meta:clone(merget)
 	__L_as(merget == nil or __L_t(merget) == "table", "Parameter 'merget' must be a table")
 	local cloned = setmetatable({  }, node_meta)
-	for k, v in pairs(self) do ;cloned[k] = v end
-	if merget then for k, v in pairs(merget) do ;cloned[k] = v end end
+	for k, v in pairs(self) do cloned[k] = v end
+	if merget then for k, v in pairs(merget) do cloned[k] = v end end
 
 	return cloned
 end
