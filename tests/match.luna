@@ -1,0 +1,13 @@
+local test = (x) => do
+	match x 
+		42 => return "the answer to everything"
+		"dog" => return "bark bark"
+		nil => return "really, a nil?"
+		_ => return "bah"
+	end
+end
+
+assert(test(42) == "the answer to everything")
+assert(test("dog") == "bark bark")
+assert(test() == "really, a nil?")
+assert(test(false) == "bah")

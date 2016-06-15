@@ -78,23 +78,6 @@ function node_meta:clone(merget)
 	return cloned
 end
 
-function Parser:node(type, ...)
-	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")
-	local n = setmetatable({ type = type, line = (self.curToken and self.curToken.line), col = (self.curToken and self.curToken.col) }, node_meta)
-	local args = { ... }
-
-
-
-	if gettype(args[1]) == "table" and args[1].type then 
-	n.line = args[1].line end
-
-
-	for i, v in pairs(args) do
-		n[i] = v
-	end
-
-	return n
-end
 
 
 
@@ -119,15 +102,34 @@ local nodecreator_node_meta = {
 		return n
 	end
 }
-
 nodecreator_meta.__index = function (self, name)
 	local n = rawget(self, "base"):cloneMeta(name)
 	return setmetatable({ n = n }, nodecreator_node_meta)
 end
-function Parser:nodeCreator(base)
-	return setmetatable({ base = base }, nodecreator_meta)
+function node_meta:newCreator()
+	return setmetatable({ base = self }, nodecreator_meta)
 end
 
+function Parser:node(type, ...)
+	__L_as(__L_t(type) == "string", "Parameter 'type' must be a string")
+	local n = setmetatable({ type = type, line = (self.curToken and self.curToken.line), col = (self.curToken and self.curToken.col) }, node_meta)
+	local args = { ... }
+
+
+
+	if gettype(args[1]) == "table" and args[1].type then 
+	n.line = args[1].line end
+
+
+	for i, v in pairs(args) do
+		n[i] = v
+	end
+
+	return n
+end
+function Parser:nodeCreator(base)
+	return base:newCreator()
+end
 function Parser:token2node(token, prepend_t)
 	__L_as(token == nil or __L_t(token) == "lunatoken", "Parameter 'token' must be a lunatoken");__L_as(prepend_t == nil or __L_t(prepend_t) == "boolean", "Parameter 'prepend_t' must be a boolean")
 	if not token then return nil end
@@ -322,6 +324,7 @@ function Parser:stat()
 	self:acceptChain(fnstmt, { "keyword", "function" }, "funcname", "funcbody") or
 	self:acceptChain(localfnstmt, { "keyword", "local" }, { "keyword", "function" }, "name", "funcbody") or
 	self:stat_local() or
+	self:stat_match() or
 	self:primaryexp() or
 
 	self:laststat()
@@ -417,6 +420,45 @@ function Parser:stat_local()
 
 	return self:acceptChain(localdestr, { "keyword", "local" }, "destructor", { "assignop", "=" }, "exp") or
 	self:acceptChain(localstmt, { "keyword", "local" }, "typednamelist")
+end
+
+function Parser:stat_match()
+	return self:chain("match"):accept("identifier", "match"):accept((function(...) return self:exp(...) end)):expect((function(...) return self:matchblock(...) end)):done(function (_, e, b)
+
+		return self:node("match", e, b)
+	end)
+end
+function Parser:matchblock()
+	local block = self:node("matchblock")
+
+	block.line = self.nextToken.line
+	block.col = self.nextToken.col
+
+	while true do 
+	if self:accept("keyword", "end") then 
+	break end
+
+
+	local cond = self:matchcond()
+	if not cond then self:expectedError("match condition") end
+
+	self:expect("symbol", "=>")
+
+	local stat = self:stat()
+	if not cond then self:expectedError("match statement") end
+
+	table.insert(block, self:node("matcharm", cond, stat)) end
+
+
+	return block
+end
+function Parser:matchcond()
+	return self:token2node(self:accept("keyword", "nil")) or
+	self:token2node(self:accept("keyword", "false")) or
+	self:token2node(self:accept("keyword", "true")) or
+	self:token2node(self:accept("number")) or
+	self:token2node(self:accept("literal")) or
+	self:token2node(self:accept("identifier", "_"))
 end
 
 

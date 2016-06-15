@@ -533,7 +533,43 @@ function luafier.internalToLua(node, opts, buf)
 	buf:append("(function(...) return ")
 	toLua(node[1])
 	buf:append(":");toLua(node[2]);buf:append("(...)")
-	buf:append(" end)") elseif node.type == "binop" then 
+	buf:append(" end)") elseif node.type == "match" then 
+
+	local nc = node:newCreator()
+
+	local varName = "__lmatch" .. buf:getTmpIndexAndIncrement()
+	toLua(nc["local"](nc.varlist(nc.typedname(varName)), nc.explist(node[1])))
+	buf:append(";")
+	local mainif
+	local curif
+
+	local mapCond = function(cond) 
+	if cond.type == "identifier" and cond.text == "_" then 
+	return nc.keyword(function() return "true", "text" end) else 
+
+	return nc.binop(nc.t_binop(function() return "==", "text" end), varName, cond) end end
+
+
+
+	for _, arm in ipairs(node[2]) do
+
+		local cond = arm[1]
+		local body = arm[2]
+
+		if curif then 
+		local n = nc["elseif"](mapCond(cond), nc.block(body))
+		curif[3] = n
+		curif = n else 
+
+		mainif = nc["if"](mapCond(cond), nc.block(body))
+		curif = mainif end
+	end
+
+
+	if mainif then 
+	toLua(mainif) end elseif node.type == "binop" then 
+
+
 
 	toLua(node[2])
 	buf:appendSpace(" ");buf:append(node[1].text)
