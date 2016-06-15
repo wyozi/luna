@@ -519,7 +519,7 @@ function luafier.internalToLua(node, opts, buf)
 	node2.nillableColl = false
 
 
-	node2[2] = nc.identifier(function() return varName, "text" end)
+	node2[2] = nc.identifier({ text = varName })
 
 	local nif = nc["if"](varName, 
 	node2)
@@ -584,26 +584,26 @@ function luafier.internalToLua(node, opts, buf)
 
 	local mapCond = function(cond) 
 	if cond.type == "identifier" and cond.text == "_" then 
-	return nc.keyword(function() return "true", "text" end) elseif cond.type == "range" then 
+	return nc.keyword({ text = "true" }) elseif cond.type == "range" then 
 
 	__L_as(cond, "cannot destructure nil");local low, high = cond[1], cond[2]
-	low = low and nc.binop(nc.t_binop(function() return ">=", "text" end), varName, low)
-	high = high and nc.binop(nc.t_binop(function() return "<=", "text" end), varName, high)
+	low = low and nc.binop(nc.t_binop({ text = ">=" }), varName, low)
+	high = high and nc.binop(nc.t_binop({ text = "<=" }), varName, high)
 
 	local e
 	if low and high then 
-	e = nc.binop(nc.t_binop(function() return "and", "text" end), low, high) elseif low then 
+	e = nc.binop(nc.t_binop({ text = "and" }), low, high) elseif low then 
 
 	e = low else 
 
 	e = high end
 
 
-	return nc.binop(nc.t_binop(function() return "and", "text" end), 
-	nc.binop(nc.t_binop(function() return "==", "text" end), nc.funccall("type", nc.args(nc.explist(varName))), nc.literal(function() return "\"number\"", "text" end)), 
+	return nc.binop(nc.t_binop({ text = "and" }), 
+	nc.binop(nc.t_binop({ text = "==" }), nc.funccall("type", nc.args(nc.explist(varName))), nc.literal({ text = "\"number\"" })), 
 	e) else 
 
-	return nc.binop(nc.t_binop(function() return "==", "text" end), varName, cond) end end
+	return nc.binop(nc.t_binop({ text = "==" }), varName, cond) end end
 
 
 

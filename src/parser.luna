@@ -95,6 +95,10 @@ local nodecreator_node_meta = {
 				val.text = c
 			elseif type(c) == "function" then
 				val, key = c()
+			elseif type(c) == "table" and not (c is lunanode) then
+				for k,v of c do
+					n[k] = v
+				end
 			end
 
 			n[key or i] = val
@@ -663,7 +667,7 @@ function Parser:macroexpand_map(args)
 							nc.funccall("pairs", nc.args(nc.explist("t"))),
 							nc.block(
 								nc.assignment(
-									nc.t_assignop(() => do return "=", "text" end),
+									nc.t_assignop({text = "="}),
 									nc.varlist(nc.indexb("nt", "k")),
 									nc.explist(
 										cbody

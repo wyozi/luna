@@ -94,7 +94,11 @@ local nodecreator_node_meta = {
 			val = n:cloneMeta("identifier")
 			val.text = c elseif type(c) == "function" then 
 
-			val, key = c() end
+			val, key = c() elseif type(c) == "table" and not (__L_t(c)=="lunanode") then 
+
+			for k, v in pairs(c) do
+				n[k] = v
+			end end
 
 
 			n[key or i] = val
@@ -655,15 +659,7 @@ function Parser:macroexpand_map(args)
 	nc.block(nc["local"](nc.typedname("nt"), nc.explist(nc.tableconstructor(nc.fieldlist()))), 
 	nc.forgen(nc.typednamelist(nc.typedname("k"), nc.typedname("v")), 
 	nc.funccall("pairs", nc.args(nc.explist("t"))), 
-	nc.block(nc.assignment(nc.t_assignop(function() 
-
-
-
-
-
-
-
-	return "=", "text" end), 
+	nc.block(nc.assignment(nc.t_assignop({ text = "=" }), 
 	nc.varlist(nc.indexb("nt", "k")), 
 	nc.explist(cbody)))), 
 
@@ -675,6 +671,14 @@ function Parser:macroexpand_map(args)
 
 
 	nc.args(nc.explist(sourceTable:clone({ line = args.line })))))
+
+
+
+
+
+
+
+
 
 
 	return mm
