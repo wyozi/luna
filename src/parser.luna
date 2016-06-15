@@ -65,7 +65,7 @@ node_meta.__type = "lunanode"
 function node_meta:cloneMeta(newType: string, merget: table?)
 	local cloned = setmetatable({ type = newType, line = self.line, col = self.col }, node_meta)
 	if merget then
-		for k,v in pairs(merget) do cloned[k] = v end
+		for k,v of merget do cloned[k] = v end
 	end
 	return cloned
 end
@@ -73,7 +73,7 @@ function node_meta:clone(merget: table?)
 	local cloned = setmetatable({}, node_meta)
 	for k,v in pairs(self) do cloned[k] = v end
 	if merget then
-		for k,v in pairs(merget) do cloned[k] = v end
+		for k,v of merget do cloned[k] = v end
 	end
 	return cloned
 end
@@ -87,7 +87,7 @@ local nodecreator_meta = {}
 local nodecreator_node_meta = {
 	__call = function(t, ...)
 		local n = t.n
-		for i,c in ipairs{...} do
+		for i,c ofi {...} do
 			local key, val = nil, c
 
 			if c is string then
@@ -121,7 +121,7 @@ function Parser:node(type: string, ...)
 		n.line = args[1].line
 	end
 
-	for i,v in pairs(args) do
+	for i,v of args do
 		n[i] = v
 	end
 
@@ -164,7 +164,7 @@ function Parser:acceptChain(fn: function, ...)
 	local line, col = self.nextToken?.line, self.nextToken?.col
 
 	local t = {}
-	for i,node in pairs{...} do
+	for i,node of {...} do
 		local parsed
 		if type(node) == "table" then
 			parsed = self:accept(node[1], node[2])
@@ -231,7 +231,7 @@ function chain_meta:done(fn: function)
 	local line, col = parser.nextToken?.line, parser.nextToken?.col
 	
 	local t = {}
-	for i, ch in ipairs(self.chain) do
+	for i, ch ofi self.chain do
 		local {name, expected, fn} = ch
 		local parsed = fn()
 
@@ -632,7 +632,7 @@ function Parser:macroexpand_map(args)
 	local cparFirstName = cpars[1][1].text
 	local function rewriteIdentifiers(n)
 		if n is lunanode then
-			for _,v in pairs(n) do
+			for v of n do
 				rewriteIdentifiers(v)
 			end
 

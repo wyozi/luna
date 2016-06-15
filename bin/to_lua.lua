@@ -675,9 +675,7 @@ function luafier.toLua(node, useropts)
 	local opts = {  }
 
 	for k, v in pairs(defopts) do opts[k] = v end
-	if useropts then 
-	for k, v in pairs(useropts) do opts[k] = v end end
-
+	local __lcoll2 = useropts;if __lcoll2 then for k, v in pairs(__lcoll2) do opts[k] = v end end
 
 	local bufIndentString = opts.prettyPrint and opts.indentString or ""
 

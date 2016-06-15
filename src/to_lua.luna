@@ -14,7 +14,7 @@ function luafier.getNodeLastLine(n)
 	if not s then return -1 end
 
 	local l = s
-	for k,v in ipairs(n) do
+	for k,v ofi n do
 		if luafier.isNode(v) then
 			l = math.max(l, luafier.getNodeLastLine(v))
 		end
@@ -24,7 +24,7 @@ end
 
 function luafier.isParentOf(par, node)
 	if par == node then return true end
-	for k,v in ipairs(par) do
+	for k,v ofi par do
 		if v == node or (luafier.isNode(v) and luafier.isParentOf(v, node)) then return true end
 	end
 	return false
@@ -52,7 +52,7 @@ end
 
 function luafier.listToLua(list, opts, buf: luabuf)
 	local lastnode
-	for i,snode in ipairs(list) do
+	for i,snode ofi list do
 		if i > 1 then buf:append(", ") end
 
 		local lndiff = opts.matchLinenumbers and lastnode and luafier.getLinenoDiff(lastnode, snode)
@@ -68,7 +68,7 @@ end
 -- Processes parlist/funcbody adding eg. type checks if needed 
 function luafier.processParListFuncBlock(parlist: lunanode, funcbody: lunanode)
 	local paramextras = {}
-	for _,par in ipairs(parlist) do
+	for par ofi parlist do
 		local name, type, value
 		if par.type == "paramwithvalue" then
 			name, type = par[1][1], par[1][2]
@@ -92,7 +92,7 @@ function luafier.processParListFuncBlock(parlist: lunanode, funcbody: lunanode)
 		end
 	end
 
-	for i,tc in pairs(paramextras) do
+	for i,tc of paramextras do
 		local {var, type, nillable, value} = tc
 
 		if type then
@@ -244,7 +244,7 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 
 	if node.type == "block" then
 		local prevnode
-		for i,snode in ipairs(node) do
+		for i,snode ofi node do
 
 			local lndiff = getLinenoDiff(buf.line, snode)
 			if lndiff then
@@ -294,7 +294,7 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 		buf:append(LUAFN_ASSERT); buf:append("("); buf:append(varName); buf:append(", \"cannot destructure nil\");")
 
 		buf:append("local ")
-		for i,name in ipairs(names) do
+		for i,name ofi names do
 			if i > 1 then buf:append(", ") end
 			toLua(name)
 		end
@@ -306,7 +306,7 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 				buf:append(varName); buf:append("["); buf:append(tostring(i)); buf:append("]")
 			end
 		elseif destructor.type == "tabledestructor" then
-			for i,member in ipairs(names) do
+			for i,member ofi names do
 				if i > 1 then buf:append(", ") end
 				buf:append(varName); buf:append("."); toLua(member)
 			end
@@ -590,7 +590,7 @@ function luafier.internalToLua(node: lunanode, opts, buf: luabuf)
 			end
 		end
 
-		for _,arm in ipairs(node[2]) do
+		for arm ofi node[2] do
 
 			local cond = arm[1]
 			local body = arm[2]
@@ -674,10 +674,8 @@ local lunaInclusions =
 function luafier.toLua(node, useropts)
 	local opts = {}
 
-	for k,v in pairs(defopts) do opts[k] = v end
-	if useropts then
-		for k,v in pairs(useropts) do opts[k] = v end
-	end
+	for k,v of defopts do opts[k] = v end
+	for k,v of? useropts do opts[k] = v end
 
 	local bufIndentString = opts.prettyPrint and opts.indentString or ""
 
