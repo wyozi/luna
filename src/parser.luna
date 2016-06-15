@@ -552,8 +552,7 @@ function Parser:subexp()
 
 	if e then
 		-- check if exp is directly followed by binary operator
-		local b = self:accept("binop")
-		if b then
+		if local b = self:accept("binop") then
 			local e2 = self:subexp()
 			if not e2 then
 				self:error("expected right side of binop")
@@ -563,6 +562,11 @@ function Parser:subexp()
 			node.line = e.line
 			node.col = e.col
 			return node
+		end
+
+		-- check if it's a type check
+		if local check = self:chain("typecheck"):accept("identifier", "is"):expect("identifier"):done((_, typename) => typename) then
+			return self:node("typecheck", e, check)
 		end
 	end
 	

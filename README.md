@@ -72,6 +72,8 @@ fn(40) -- error: 'a' is invalid type
 fn("hello") -- works
 fn("hello", "world") -- error: 'b' is invalid type
 fn("hello", 42) -- works
+
+assert("hello" is string) -- can also use 'x is y' syntax
 ```
 
 #### Default parameter values (implemented: ✔)

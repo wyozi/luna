@@ -552,8 +552,7 @@ function Parser:subexp()
 
 	if e then 
 
-	local b = self:accept("binop")
-	if b then 
+	local __ifa1_b = self:accept("binop"); if __ifa1_b then local b = __ifa1_b
 	local e2 = self:subexp()
 	if not e2 then 
 	self:error("expected right side of binop") end
@@ -562,7 +561,12 @@ function Parser:subexp()
 	local node = self:node("binop", b.text, e, e2)
 	node.line = e.line
 	node.col = e.col
-	return node end end
+	return node end
+
+
+
+	local __ifa2_check = self:chain("typecheck"):accept("identifier", "is"):expect("identifier"):done(function(_, typename) return typename end); if __ifa2_check then local check = __ifa2_check
+	return self:node("typecheck", e, check) end end
 
 
 
@@ -603,9 +607,9 @@ function Parser:parlist()
 	local params = self:node("parlist")
 
 	local function nextarg()
-		local __ifa1_n = self:typedname(); if __ifa1_n then local n = __ifa1_n
+		local __ifa3_n = self:typedname(); if __ifa3_n then local n = __ifa3_n
 
-		local __ifa2_value = self:chain("default value"):accept("assignop", "="):expect((function(...) return self:exp(...) end)):done(function(_, e) return e end); if __ifa2_value then local value = __ifa2_value
+		local __ifa4_value = self:chain("default value"):accept("assignop", "="):expect((function(...) return self:exp(...) end)):done(function(_, e) return e end); if __ifa4_value then local value = __ifa4_value
 		return self:node("paramwithvalue", n, value) end
 
 		return n end
@@ -615,7 +619,7 @@ function Parser:parlist()
 		return self:varargs()
 	end
 
-	local __ifa3_param = nextarg(); if __ifa3_param then local param = __ifa3_param
+	local __ifa5_param = nextarg(); if __ifa5_param then local param = __ifa5_param
 
 
 	local vargsAdded = false

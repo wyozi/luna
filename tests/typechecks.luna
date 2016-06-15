@@ -11,3 +11,7 @@ local function fn2(a: custom)end
 
 local node = setmetatable({}, customtype)
 fn2(node)
+
+local x = "hello" is string
+assert(x == true)
+assert(x is boolean)

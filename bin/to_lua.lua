@@ -551,8 +551,11 @@ function luafier.internalToLua(node, opts, buf)
 	if node[1] == "not" then 
 	buf:append(" ") end
 
-	toLua(node[2]) elseif node.type == "parexp" then 
+	toLua(node[2]) elseif node.type == "typecheck" then 
 
+
+	buf:append(LUAFN_TYPE)
+	buf:append("(");toLua(node[1]);buf:append(")==\"");buf:append(node[2].text);buf:append("\"") elseif node.type == "parexp" then 
 
 	buf:append("(")
 	toLua(node[1]);buf:append(")") elseif node.type == "identifier" or node.type == "keyword" then 
