@@ -329,6 +329,7 @@ function Parser:stat()
 	self:acceptChain(localfnstmt, { "keyword", "local" }, { "keyword", "function" }, "name", "funcbody") or
 	self:stat_local() or
 	self:stat_match() or
+	self:stat_import() or
 	self:primaryexp() or
 
 	self:laststat()
@@ -487,6 +488,11 @@ function Parser:matchcond()
 	self:token2node(self:accept("number")) or
 	self:token2node(self:accept("literal")) or
 	self:token2node(self:accept("identifier", "_"))
+end
+
+function Parser:stat_import()
+	return self:acceptChain(function(_, _, _, bindingName, _, libName) return self:node("import", self:token2node(bindingName), self:token2node(libName)) end, 
+	{ "identifier", "import" }, { "binop", "*" }, { "identifier", "as" }, { "identifier" }, { "identifier", "from" }, { "literal" })
 end
 
 

@@ -197,7 +197,7 @@ function luafier:wrapIndent(n1, n2, fn, alsoIfPrettyPrint)
 	self.buf:nlIndent()
 	for i = 1, addNl - 1 do self.buf:nl() end else 
 
-	self.buf:appendSpace(" ") end
+	self.buf:append(" ") end
 
 
 	fn()
@@ -209,11 +209,17 @@ function luafier:wrapIndent(n1, n2, fn, alsoIfPrettyPrint)
 end
 
 
+
+
+function luafier:writeImportGetterImpl(libliteral)
+	self.buf:append("require(")
+	self:writeNode(libliteral);self.buf:append(")")
+end
 function luafier:writeList(list)
 	__L_as(__L_t(list)=="lunanode", "Invalid value for 'list'. Expected a 'lunanode'")
 	local lastnode
 	for i, snode in ipairs(list) do
-		if i > 1 then self.buf:append(", ") end
+		if i > 1 then self.buf:append(",");self.buf:appendSpace(" ") end
 		local lndiff = self.opts.matchLinenumbers and lastnode and to_lua.getLinenoDiff(lastnode, snode)
 		lastnode = snode
 		if lndiff and lndiff > 0 then 
@@ -265,9 +271,9 @@ function luafier:writeNode(node)
 	buf:append("local ")
 	toLua(node[1])
 	if node[2] then 
-	buf:append(" = ")
+	buf:appendSpace(" ")
+	buf:append("=");buf:appendSpace(" ")
 	toLua(node[2]) end elseif node.type == "localdestructor" then 
-
 
 
 	self:writeLocalDestructorNode(node) elseif node.type == "funcname" then 
@@ -486,14 +492,18 @@ function luafier:writeNode(node)
 	self:writeMatchNode(node) elseif node.type == "binop" then 
 
 
+	local textualNode = node[1].text == "and" or node[1].text == "or"
+
 	toLua(node[2])
-	buf:appendSpace(" ");buf:append(node[1].text)
+	if textualNode then buf:append(" ") else buf:appendSpace(" ") end
+	buf:append(node[1].text)
+
 	local lndiff = getLinenoDiff(node[2], node[3])
 
 	if lndiff and lndiff > 0 then 
 	for i = 1, lndiff do buf:nl() end else 
 
-	buf:appendSpace(" ") end
+	if textualNode then buf:append(" ") else buf:appendSpace(" ") end end
 
 	toLua(node[3]) elseif node.type == "unop" then 
 
@@ -514,7 +524,12 @@ function luafier:writeNode(node)
 
 
 	buf:append(LUAFN_TYPE)
-	buf:append("(");self:writeNode(var);buf:append(")==\"");buf:append(type[1].text);buf:append("\"") elseif node.type == "parexp" then 
+	buf:append("(");self:writeNode(var);buf:append(")==\"");buf:append(type[1].text);buf:append("\"") elseif node.type == "import" then 
+
+	__L_as(node, "cannot destructure nil");local binding, lib = node[1], node[2]
+
+	buf:append("local ")
+	self:writeNode(binding);buf:append(" = ");self:writeImportGetterImpl(lib) elseif node.type == "parexp" then 
 
 	buf:append("(")
 	toLua(node[1]);buf:append(")") elseif node.type == "identifier" or node.type == "keyword" then 
@@ -726,11 +741,18 @@ local defopts = {
 	indentString = "\t", 
 
 
-	nlString = "\n"
+	nlString = "\n", 
+
+
+
+	moduleImportImpl = nil, 
+
+
+	writeHeader = true
 }
 
 
-local lunaInclusions = [[local ]] .. LUAFN_ASSERT .. [[,__L_to,__L_gmt=assert,type,getmetatable;]] ..
+to_lua.lunaHeader = [[local ]] .. LUAFN_ASSERT .. [[,__L_to,__L_gmt=assert,type,getmetatable;]] ..
 [[local function ]] .. LUAFN_TYPE .. [[(o)local t=__L_to(o) if t=="table" then local mt = __L_gmt(o)return (mt and mt.__type) or t end return t end]]
 
 
@@ -743,9 +765,10 @@ function to_lua.toLua(node, useropts)
 	local bufIndentString = opts.prettyPrint and opts.indentString or ""
 
 	local buf = luaBuffer.new(bufIndentString, opts.nlString, not opts.prettyPrint)
-	buf:append(lunaInclusions)
-	buf:append(";")
+	if opts.writeHeader then buf:append(to_lua.lunaHeader)
+	buf:append(";") end
 	local l = luafier.new(buf, opts)
+	if opts.moduleImportImpl then l.writeImportGetterImpl = opts.moduleImportImpl end
 	l:writeNode(node)
 	return l:getLua()
 end

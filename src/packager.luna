@@ -1,0 +1,41 @@
+local packager = {}
+
+import * as luafier from "to_lua"
+
+
+local function packageModuleImportImpl(luafier, libliteral)
+	luafier.buf:append("__L_load("); luafier:writeNode(libliteral); luafier.buf:append(")")
+end
+
+-- Packages a map of lua items, where each map entry is path -> lunanode
+-- Entry is the path to the module component that should be called on file load
+function packager.packageMap(m: table, entry: string?)
+	local outArray = {}
+	table.insert(outArray, [[
+local __L_mods = {}
+local function __L_define(name, init)
+	__L_mods[name] = init
+end
+local function __L_load(name)
+	return __L_mods[name]()
+end
+]])
+
+	table.insert(outArray, luafier.lunaHeader)
+	table.insert(outArray, "\n")
+
+	for path,node of m do
+		table.insert(outArray, "__L_define(\"" .. path .. "\", function()\n")
+		table.insert(outArray, luafier.toLua(node, {matchLinenumbers = false, prettyPrint = false, moduleImportImpl = packageModuleImportImpl, writeHeader = false}))
+		table.insert(outArray, " end)")
+	end
+
+	if entry then
+		table.insert(outArray, "return __L_load(\"" .. entry .. "\")")
+	end
+
+	return table.concat(outArray, "")
+end
+
+
+return packager

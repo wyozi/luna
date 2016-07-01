@@ -9,7 +9,8 @@ local function loadInput()
 	return io.read("*a")
 end
 
-local _lexer, _parser, _toLua = require("bin/lexer"), require("bin/parser"), require("bin/to_lua").toLua
+package.path = package.path .. ";bin/?.lua"
+local _lexer, _parser, _toLua, _packager = require("bin/lexer"), require("bin/parser"), require("bin/to_lua").toLua, require("bin/packager")
 
 compilestring = loadstring or load -- 5.2/5.3 compat
 
@@ -27,12 +28,33 @@ local sys = {}
 sys.isWindows = package.config:sub(1,1) == "\\"
 
 function sys.ls(folder)
-	local out = io.popen(sys.isWindows and "dir /b /a-d tests" or "ls -1 tests")
+	local cmd = sys.isWindows and ("dir /b /a-d " .. folder:match("^(.-)/?$")) or ("ls -1 " .. folder)
+	local out = io.popen(cmd)
 	local t = {}
 	for line in out:lines() do
 		table.insert(t, line)
 	end
 	return t
+end
+
+-- Source: MoonScript moonc
+function sys.dirscan(root, filter, _collected)
+	_collected = _collected or {}
+
+	for _,fname in pairs(sys.ls(root)) do
+		if not fname:match("^%.") then
+			local full_path = root .. fname
+
+			-- run below if path is a folder
+			--sys.dirscan(full_path, filter, _collected)
+
+			if not filter or filter(full_path) then
+				table.insert(_collected, full_path)
+			end
+		end
+	end
+
+	return _collected
 end
 
 if args[1] == "compile" or args[1] == "c" then
@@ -41,7 +63,7 @@ if args[1] == "compile" or args[1] == "c" then
 	print(luac)
 elseif args[1] == "compile-self" then
 
-	for _,src in pairs{"lexer", "parser", "to_lua"} do
+	for _,src in pairs{"lexer", "parser", "to_lua", "packager"} do
 		local f = io.open("src/" .. src .. ".luna", "rb")
 		local luna = f:read("*a")
 		f:close()
@@ -52,6 +74,32 @@ elseif args[1] == "compile-self" then
 		nf:write(lua)
 		nf:close()
 	end
+
+elseif args[1] == "pack" then
+	local folder = args[2] or error("Please provide the folder for sources to pack")
+	local main = args[3] or error("Please provide the main module to run upon loading the packed file")
+	local outFile = args[4] or "pack.lua"
+
+	local scanned = sys.dirscan(folder .. "/", function(f) return f:match("%.luna$") end)
+
+	local map = {}
+
+	for _,srcf in pairs(scanned) do
+		local f = io.open(srcf, "rb")
+		local luna = f:read("*a")
+		f:close()
+
+		local lunanode = toAST(luna)
+
+		local modPath = srcf:sub(#folder + 2):match("^(.-)%.luna$") -- remove srcfolder prefix and extension
+		map[modPath] = lunanode
+	end
+
+	local packedLua = _packager.packageMap(map, main)
+
+	local nf, e = io.open(outFile, "w")
+	nf:write(packedLua)
+	nf:close()
 
 elseif args[1] == "ast" then
 	local block = toAST(loadInput())

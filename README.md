@@ -185,6 +185,28 @@ match x
 end
 ```
 
+#### Modules (implemented: partially)
+
+Note: only `import * as name from "lib"` works at the moment. To export members simply return a table containing them in a file.
+
+```lua
+-- a.luna
+export TARGET_WORLD = "World"
+export function getTarget()
+	return TARGET_WORLD
+end
+```
+```lua
+-- b.luna
+import getTarget from "a"
+print("Hello " .. getTarget())
+```
+```lua
+-- c.luna
+import * as a from "a"
+print("Hello " .. a.getTarget())
+```
+
 #### Macros (implemented: ✘)
 
 Note: cannot create your own macros at the moment.
