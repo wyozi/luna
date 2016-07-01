@@ -9,8 +9,14 @@ local function loadInput()
 	return io.read("*a")
 end
 
-package.path = package.path .. ";bin/?.lua"
-local _lexer, _parser, _toLua, _packager = require("bin/lexer"), require("bin/parser"), require("bin/to_lua").toLua, require("bin/packager")
+local thisFilePath = arg[0]
+if thisFilePath then
+	local thisFolderPath = thisFilePath:gsub("\\", "/"):match("^(.-)[\\/][^\\/]+$")
+	package.path = package.path .. ";" .. thisFolderPath .. "/bin/?.lua"
+else
+	package.path = package.path .. ";bin/?.lua"
+end
+local _lexer, _parser, _toLua, _packager = require("lexer"), require("parser"), require("to_lua").toLua, require("packager")
 
 compilestring = loadstring or load -- 5.2/5.3 compat
 
