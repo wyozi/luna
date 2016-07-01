@@ -11,6 +11,8 @@ end
 
 local _lexer, _parser, _toLua = require("bin/lexer"), require("bin/parser"), require("bin/to_lua").toLua
 
+compilestring = loadstring or load -- 5.2/5.3 compat
+
 function toAST(code)
 	local l = _lexer.new(code)
 	local p = _parser.new(l)
@@ -18,7 +20,20 @@ function toAST(code)
 	return n
 end
 
-compilestring = loadstring or load -- 5.2/5.3 compat
+-- Small library for OS specific commands
+local sys = {}
+
+-- OS detection hack! from: http://stackoverflow.com/a/14425862
+sys.isWindows = package.config:sub(1,1) == "\\"
+
+function sys.ls(folder)
+	local out = io.popen(sys.isWindows and "dir /b /a-d tests" or "ls -1 tests")
+	local t = {}
+	for line in out:lines() do
+		table.insert(t, line)
+	end
+	return t
+end
 
 if args[1] == "compile" or args[1] == "c" then
 	local block = toAST(loadInput())
@@ -92,11 +107,7 @@ elseif args[1] == "run" then
 		print("compilation failed: ", e)
 	end
 elseif args[1] == "t" or args[1] == "test" then
-	-- OS detection hack! from: http://stackoverflow.com/a/14425862
-	local isWindows = package.config:sub(1,1) == "\\"
-
-	local testls = io.popen(isWindows and "dir /b /a-d tests" or "ls -1 tests")
-	for name in testls:lines() do
+	for _,name in pairs(sys.ls("tests")) do
 		if name:match("%.luna$") then
 			io.write("Testing '" .. name .. "' .. ")
 			
