@@ -63,23 +63,39 @@ function sys.dirscan(root, filter, _collected)
 	return _collected
 end
 
-if args[1] == "compile" or args[1] == "c" then
-	local block = toAST(loadInput())
-	local luac = _toLua(block)
-	print(luac)
-elseif args[1] == "compile-self" then
+local function compileAll(srcFolder, outFolder)
+	local scanned = sys.dirscan(srcFolder .. "/", function(f) return f:match("%.luna$") end)
 
-	for _,src in pairs{"lexer", "parser", "to_lua", "packager"} do
-		local f = io.open("src/" .. src .. ".luna", "rb")
+	local map = {}
+
+	for _,srcf in pairs(scanned) do
+		local f = io.open(srcf, "rb")
 		local luna = f:read("*a")
 		f:close()
 
 		local lua = _toLua(toAST(luna))
 
-		local nf, e = io.open("bin/" .. src .. ".lua", "w")
+		local path = srcf:sub(#srcFolder + 2):match("^(.-)%.luna$") -- remove srcfolder prefix and extension
+		local nf, e = io.open(outFolder .. "/" .. path .. ".lua", "w")
+		if not nf then
+			error("Error while trying to write compiled Luna to " .. path .. ": " .. e)
+		end
 		nf:write(lua)
 		nf:close()
 	end
+end
+
+if args[1] == "compile" or args[1] == "c" then
+	local block = toAST(loadInput())
+	local luac = _toLua(block)
+	print(luac)
+
+elseif args[1] == "compile-all" then
+
+	local srcFolder = args[2] or "src"
+	local outFolder = args[3] or "bin"
+
+	compileAll(srcFolder, outFolder)
 
 elseif args[1] == "pack" then
 	local folder = args[2] or error("Please provide the folder for sources to pack")
@@ -161,6 +177,9 @@ elseif args[1] == "run" then
 		print("compilation failed: ", e)
 	end
 elseif args[1] == "t" or args[1] == "test" then
+	-- needed for non-Luna projects that use test
+	package.path = package.path .. ";bin/?.lua"
+
 	for _,name in pairs(sys.ls("tests")) do
 		if name:match("%.luna$") then
 			io.write("Testing '" .. name .. "' .. ")
