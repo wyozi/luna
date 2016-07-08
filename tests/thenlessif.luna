@@ -1,0 +1,10 @@
+local x = 3
+
+
+if x == 2
+	assert(false)
+elseif x == 3
+	-- oui
+else
+	assert(false)
+end

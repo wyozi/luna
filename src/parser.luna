@@ -357,34 +357,52 @@ function Parser:stat_if()
 		return self:node("else", b)
 	end
 	function _elseif()
-		local cond, b =
-			self:acceptChain((e,_,b) => do return e, b end, "exp", {"keyword", "then"}, "block")
-		if not b then self:error("expected elseif condition or block") end
+		local cond = self:exp()
+		if not cond then self:error("expected elseif condition") end
+
+		self:accept("keyword", "then")
+
+		local b = self:block()
+		if not b then self:error("expected elseif body") end
 
 		local node = self:node("elseif", cond, b)
 		cont(b, node)
 		return node
 	end
 
-	local function normalif(_,cond,_,b)
+	local function normalif(cond,b)
+		if not cond then self:error("expected if condition") end
+		if not b then self:error("expected if body") end
+		
 		local node = self:node("if", cond, b)
 		cont(b, node)
 		return node
 	end
 
-	local function assignif(_,assign,_,b)
+	local function assignif(assign,b)
 		if #assign[1] ~= 1 or #assign[2] ~= 1 then
 			self:error("If-Assign must have exactly one assigned variable")
 		end
+		if not b then self:error("expected if body") end
 
 		local node = self:node("ifassign", assign, b)
 		cont(b, node)
 		return node
 	end
 
-	return
-		self:acceptChain(normalif, {"keyword", "if"}, "exp", {"keyword", "then"}, "block") or
-		self:acceptChain(assignif, {"keyword", "if"}, "stat_local", {"keyword", "then"}, "block")
+	if self:accept("keyword", "if") then
+		local e = self:exp()
+		if e then
+			self:accept("keyword", "then")
+			return normalif(e, self:block())
+		end
+
+		local a = self:stat_local()
+		if a then
+			self:accept("keyword", "then")
+			return assignif(a, self:block())
+		end
+	end
 end
 function Parser:stat_for()
 	local function fornum(_,var,_,low,_,high,_,b)

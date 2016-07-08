@@ -16,6 +16,18 @@ Compiling the example file: `example.luna`, run `lua luna.lua c examples/example
 
 ### Differences from vanilla Lua
 
+#### Optional `then` (implemented: ✔)
+
+```lua
+if x
+	print("do x")
+elseif y
+	print("do y")
+else
+	print("else")
+end
+```
+
 #### Assignment operators (implemented: ✔)
 
 ```lua
