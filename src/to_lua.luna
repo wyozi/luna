@@ -670,15 +670,19 @@ function luafier:writeMatchNode(node: lunanode)
 	local mainif
 	local curif
 
-	local mapCond = (cond) => do
+	local mapCond = (cond, prependNodes) => do
 		if cond.type == "identifier" and cond.text == "_" then
 			return nc.keyword({text = "true"})
 		elseif cond.type == "typedname" then
 			local [name, type] = cond
+			
+			-- prepend local assigning match var to new var binding
+			table.insert(prependNodes, nc["local"](nc.varlist(name), nc.explist(nc.identifier({text = varName}))))
+
 			if type then
-				return nc.typecheck(cond[1].text, nc.type(cond[2][1].text))
+				-- needs to refer to match var name; new binding is not available here
+				return nc.typecheck(varName, nc.type(cond[2][1].text))
 			else
-				-- TODO should somehow?? assign variable to this name
 				return nc.keyword({text = "true"})
 			end
 
@@ -705,18 +709,46 @@ function luafier:writeMatchNode(node: lunanode)
 	end
 
 	for [cond, ifcond, body] ofi node[2] do
-		cond = mapCond(cond)
+		local prependNodes = {}
+
+		local condNode = mapCond(cond, prependNodes)
+
+		local blockBody = nc.block()
+		for n of prependNodes do
+			table.insert(blockBody, n)
+		end
+		table.insert(blockBody, body)
 
 		if ifcond then
-			cond = nc.binop(nc.t_binop({text = "and"}), cond, ifcond)
+			
+			-- If there exists both a match arm if and re-binding of var, we need to do some magic
+			-- to make it so the new binding is available to the match-if
+			-- We do it by visiting identifiers that refer to new-bound name and renaming those to refer to
+			-- match identifier
+			if cond.type == "typedname" then
+				local armBindingName = cond[1].text
+
+				local function renameRecursive(node)
+					if node.type == "identifier" and node.text == armBindingName then
+						node.text = varName
+					else
+						for n ofi node do
+							renameRecursive(n)
+						end
+					end
+				end
+				renameRecursive(ifcond)
+			end
+
+			condNode = nc.binop(nc.t_binop({text = "and"}), condNode, ifcond)
 		end
 
 		if curif then
-			local n = nc["elseif"](cond, nc.block(body))
+			local n = nc["elseif"](condNode, nc.block(blockBody))
 			curif[3] = n
 			curif = n
 		else
-			mainif = nc["if"](cond, nc.block(body))
+			mainif = nc["if"](condNode, nc.block(blockBody))
 			curif = mainif
 		end
 	end

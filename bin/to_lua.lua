@@ -670,14 +670,18 @@ function luafier:writeMatchNode(node)
 	local mainif
 	local curif
 
-	local mapCond = function(cond) 
+	local mapCond = function(cond, prependNodes) 
 	if cond.type == "identifier" and cond.text == "_" then 
 	return nc.keyword({ text = "true" }) elseif cond.type == "typedname" then 
 
 	__L_as(cond, "cannot destructure nil");local name, type = cond[1], cond[2]
-	if type then 
-	return nc.typecheck(cond[1].text, nc.type(cond[2][1].text)) else 
 
+
+	table.insert(prependNodes, nc["local"](nc.varlist(name), nc.explist(nc.identifier({ text = varName }))))
+
+	if type then 
+
+	return nc.typecheck(varName, nc.type(cond[2][1].text)) else 
 
 	return nc.keyword({ text = "true" }) end elseif cond.type == "range" then 
 
@@ -705,18 +709,46 @@ function luafier:writeMatchNode(node)
 
 
 	for _, __ldestr2 in ipairs(node[2]) do
-		__L_as(__ldestr2, "cannot destructure nil");local cond, ifcond, body = __ldestr2[1], __ldestr2[2], __ldestr2[3];cond = mapCond(cond)
+		__L_as(__ldestr2, "cannot destructure nil");local cond, ifcond, body = __ldestr2[1], __ldestr2[2], __ldestr2[3];local prependNodes = {  }
+
+		local condNode = mapCond(cond, prependNodes)
+
+		local blockBody = nc.block()
+		for _, n in pairs(prependNodes) do
+			table.insert(blockBody, n)
+		end
+		table.insert(blockBody, body)
 
 		if ifcond then 
-		cond = nc.binop(nc.t_binop({ text = "and" }), cond, ifcond) end
+
+
+
+
+
+		if cond.type == "typedname" then 
+		local armBindingName = cond[1].text
+
+		local function renameRecursive(node)
+			if node.type == "identifier" and node.text == armBindingName then 
+			node.text = varName else 
+
+			for _, n in ipairs(node) do
+				renameRecursive(n)
+			end end
+		end
+
+		renameRecursive(ifcond) end
+
+
+		condNode = nc.binop(nc.t_binop({ text = "and" }), condNode, ifcond) end
 
 
 		if curif then 
-		local n = nc["elseif"](cond, nc.block(body))
+		local n = nc["elseif"](condNode, nc.block(blockBody))
 		curif[3] = n
 		curif = n else 
 
-		mainif = nc["if"](cond, nc.block(body))
+		mainif = nc["if"](condNode, nc.block(blockBody))
 		curif = mainif end
 	end
 

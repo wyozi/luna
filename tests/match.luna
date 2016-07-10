@@ -16,13 +16,25 @@ assert(test() == "really, a nil?")
 assert(test(26) == "nice 20s")
 assert(test(28) == "bah") -- exclusive high end
 assert(test(13) == "scary number")
+assert(test("lol") == "haha")
 assert(test(false) == "bah")
 
-match x
-	42 => do 
-		print("multi")
-		print("line")
-		print("match")
-	end
-	_ => return "bah"
+-- set
+x = nil
+match 14
+	x => assert(x == 14)
+end
+assert(not x)
+
+-- set if type
+num = nil
+match 42
+	num: number => assert(num == 42)  
+end
+assert(not num)
+
+-- variable rebinding + arm if
+match "hello"
+	str: string if str == "hello" => assert(str == "hello")
+	_ => assert(false)
 end

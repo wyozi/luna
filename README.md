@@ -186,12 +186,14 @@ print(x?.item) -- prints nil
 
 #### Pattern matching (implemented: partially)
 
-Note: pattern matching only works for statements and lacks condition functionality.
+Note: pattern matching body must be a statement for now.
 
 ```lua
 match x
-	0 => return "is a number between 0 and 10"
+	0..10 => return "is a number between 0 and 10"
 	"hello" => return "is a string that says hello"
+	str: string => return "is a string: " .. str
+	num: number if num > 10 => return "is a number over 10: " .. num
 	nil => return "nil!"
 	_ => return "is nothing we care about :("
 end
