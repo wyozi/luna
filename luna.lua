@@ -16,16 +16,10 @@ if thisFilePath then
 else
 	package.path = package.path .. ";bin/?.lua"
 end
-local _lexer, _parser, _toLua, _packager = require("lexer"), require("parser"), require("to_lua").toLua, require("packager")
+
+local _compiler, _packager = require("compiler"), require("packager")
 
 compilestring = loadstring or load -- 5.2/5.3 compat
-
-function toAST(code)
-	local l = _lexer.new(code)
-	local p = _parser.new(l)
-	local n = p:block()
-	return n
-end
 
 -- Small library for OS specific commands
 local sys = {}
@@ -73,7 +67,7 @@ local function compileAll(srcFolder, outFolder)
 		local luna = f:read("*a")
 		f:close()
 
-		local lua = _toLua(toAST(luna))
+		local lua = _compiler.lunaToLua(luna)
 
 		local path = srcf:sub(#srcFolder + 2):match("^(.-)%.luna$") -- remove srcfolder prefix and extension
 		local nf, e = io.open(outFolder .. "/" .. path .. ".lua", "w")
@@ -86,9 +80,7 @@ local function compileAll(srcFolder, outFolder)
 end
 
 if args[1] == "compile" or args[1] == "c" then
-	local block = toAST(loadInput())
-	local luac = _toLua(block)
-	print(luac)
+	print(_compiler.luaToLuna(loadInput()))
 
 elseif args[1] == "compile-all" then
 
@@ -111,7 +103,7 @@ elseif args[1] == "pack" then
 		local luna = f:read("*a")
 		f:close()
 
-		local lunanode = toAST(luna)
+		local lunanode = _compiler.lunaToAST(luna)
 
 		local modPath = srcf:sub(#folder + 2):match("^(.-)%.luna$") -- remove srcfolder prefix and extension
 		map[modPath] = lunanode
@@ -124,7 +116,7 @@ elseif args[1] == "pack" then
 	nf:close()
 
 elseif args[1] == "ast" then
-	local block = toAST(loadInput())
+	local block = _compiler.lunaToAST(loadInput())
 	
 	local function printnode(t, i)
 		local indent = ("  "):rep(i or 0)
@@ -166,9 +158,7 @@ elseif args[1] == "ast" then
 	end
 	printnode(block)
 elseif args[1] == "run" then
-	local block = toAST(loadInput())
-
-	local luac = _toLua(block)
+	local luac = _compiler.lunaToLua(loadInput())
 	
 	local f, e = compilestring(luac)
 	if f then
@@ -189,7 +179,7 @@ elseif args[1] == "t" or args[1] == "test" then
 			f:close()
 
 			io.write("luafying .. ")
-			local luafied = _toLua(toAST(src))
+			local luafied = _compiler.lunaToLua(src)
 
 			io.write("running .. ")
 			local f, e = compilestring(luafied, "tests/" .. name)

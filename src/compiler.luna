@@ -1,0 +1,18 @@
+import * as lexer from "lexer"
+import * as parser from "parser"
+import * as luafier from "to_lua"
+
+local compiler = {}
+
+function compiler.lunaToAST(code: string)
+	local l = lexer.new(code)
+	local p = parser.new(l)
+	return p:block()
+end
+
+function compiler.lunaToLua(code: string)
+	local ast = compiler.lunaToAST(code)
+	return luafier.toLua(ast)
+end
+
+return compiler
