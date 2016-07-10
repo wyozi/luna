@@ -80,7 +80,7 @@ local function compileAll(srcFolder, outFolder)
 end
 
 if args[1] == "compile" or args[1] == "c" then
-	print(_compiler.luaToLuna(loadInput()))
+	print(_compiler.lunaToLua(loadInput()))
 
 elseif args[1] == "compile-all" then
 
