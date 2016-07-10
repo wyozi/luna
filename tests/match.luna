@@ -17,3 +17,12 @@ assert(test(26) == "nice 20s")
 assert(test(28) == "bah") -- exclusive high end
 assert(test(13) == "scary number")
 assert(test(false) == "bah")
+
+match x
+	42 => do 
+		print("multi")
+		print("line")
+		print("match")
+	end
+	_ => return "bah"
+end

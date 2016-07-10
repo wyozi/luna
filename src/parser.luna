@@ -489,10 +489,17 @@ function Parser:matchblock()
 
 		self:expect("symbol", "=>")
 
-		local stat = self:stat()
-		if not cond then self:expectedError("match statement") end
+		if self:accept("keyword", "do") then
+			local mblock = self:block()
+			if not mblock then self:expectedError("match block") end
 
-		table.insert(block, self:node("matcharm", cond, extraif, stat))
+			table.insert(block, self:node("matcharm", cond, extraif, mblock))
+		else
+			local stat = self:stat()
+			if not stat then self:expectedError("match statement") end
+
+			table.insert(block, self:node("matcharm", cond, extraif, stat))
+		end
 	end
 
 	return block
