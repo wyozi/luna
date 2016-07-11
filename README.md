@@ -68,6 +68,10 @@ end
 print(fn1("Mike"))
 fn2(25)
 ```
+```lua
+local function sqr(x) = x * x
+assert(sqr(2) == 4)
+```
 
 #### Type signatures (implemented: ✔)
 

@@ -5,3 +5,6 @@ f(() => 42, "hello", 12)
 
 local simple = w => w:upper()
 assert(simple("hey") == "HEY")
+
+local function exprfun(x) = x * x
+assert(exprfun(10) == 100)

@@ -821,8 +821,18 @@ function Parser:func()
 end
 
 function Parser:funcbody()
+	local function fnimpl()
+		if self:accept("assignop", "=") then
+			local exp = self:exp()
+			if not exp then self:error("expected expression") end
+			return self:node("block", self:node("return", exp))
+		end
+		local block = self:block()
+		if not block then self:error("expected block") end
+		return block
+	end
 	return
-		self:acceptChain((_, p, _, b) => self:node("funcbody", p, b), {"symbol", "("}, "parlist", {"symbol", ")"}, "block")
+		self:acceptChain((_, p, _) => self:node("funcbody", p, fnimpl()), {"symbol", "("}, "parlist", {"symbol", ")"})
 end
 
 function Parser:varargs()

@@ -821,7 +821,17 @@ end
 
 
 function Parser:funcbody()
-	return self:acceptChain(function(_, p, _, b) return self:node("funcbody", p, b) end, { "symbol", "(" }, "parlist", { "symbol", ")" }, "block")
+	local function fnimpl()
+		if self:accept("assignop", "=") then 
+		local exp = self:exp()
+		if not exp then self:error("expected expression") end
+		return self:node("block", self:node("return", exp)) end
+
+		local block = self:block()
+		if not block then self:error("expected block") end
+		return block
+	end
+	return self:acceptChain(function(_, p, _) return self:node("funcbody", p, fnimpl()) end, { "symbol", "(" }, "parlist", { "symbol", ")" })
 end
 
 
