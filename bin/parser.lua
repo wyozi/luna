@@ -744,7 +744,6 @@ function Parser:primaryexp()
 	n = nn end
 end
 
-
 function Parser:simpleexp()
 	local n = self:token2node(self:accept("keyword", "nil")) or
 	self:token2node(self:accept("keyword", "false")) or
@@ -758,7 +757,7 @@ function Parser:simpleexp()
 	self:primaryexp()
 
 
-	if n then return n end
+	return n
 end
 
 function Parser:sfunc()
@@ -779,7 +778,12 @@ function Parser:subexp()
 
 	if e then 
 
-	local __ifa4_b = self:accept("binop"); if __ifa4_b then local b = __ifa4_b
+	local __ifa4_check = self:chain("typecheck"):accept("identifier", "is"):expect((function(...) return self:type(...) end)):done(function(_, type) return type end); if __ifa4_check then local check = __ifa4_check
+	e = self:node("typecheck", e, check) end
+
+
+
+	local __ifa5_b = self:accept("binop"); if __ifa5_b then local b = __ifa5_b
 	local e2 = self:subexp()
 	if not e2 then 
 	self:error("expected right side of binop") end
@@ -788,12 +792,7 @@ function Parser:subexp()
 	local node = self:node("binop", self:token2node(b), e, e2)
 	node.line = e.line
 	node.col = e.col
-	return node end
-
-
-
-	local __ifa5_check = self:chain("typecheck"):accept("identifier", "is"):expect((function(...) return self:type(...) end)):done(function(_, type) return type end); if __ifa5_check then local check = __ifa5_check
-	return self:node("typecheck", e, check) end end
+	return node end end
 
 
 

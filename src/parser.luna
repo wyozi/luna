@@ -744,7 +744,6 @@ function Parser:primaryexp()
 		n = nn
 	end
 end
-
 function Parser:simpleexp()
 	local n =
 		self:token2node(self:accept("keyword", "nil")) or
@@ -758,7 +757,7 @@ function Parser:simpleexp()
 		self:tableconstructor() or
 		self:primaryexp()
 
-	return n if n
+	return n
 end
 
 function Parser:sfunc()
@@ -778,6 +777,11 @@ function Parser:subexp()
 	local e = self:simpleexp()
 
 	if e then
+		-- check if it's a type check
+		if local check = self:chain("typecheck"):accept("identifier", "is"):expect(self::type):done((_, type) => type) then
+			e = self:node("typecheck", e, check)
+		end
+
 		-- check if exp is directly followed by binary operator
 		if local b = self:accept("binop") then
 			local e2 = self:subexp()
@@ -789,11 +793,6 @@ function Parser:subexp()
 			node.line = e.line
 			node.col = e.col
 			return node
-		end
-
-		-- check if it's a type check
-		if local check = self:chain("typecheck"):accept("identifier", "is"):expect(self::type):done((_, type) => type) then
-			return self:node("typecheck", e, check)
 		end
 	end
 	

@@ -15,3 +15,6 @@ fn2(node)
 local x = "hello" is string
 assert(x == true)
 assert(x is boolean)
+
+if x is string and y is number then
+end

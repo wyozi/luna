@@ -38,6 +38,10 @@ else
 	num = 5
 end
 
+if a and b or c then
+	
+end
+
 local smth = true
 while smth == true do
 	smth = false
